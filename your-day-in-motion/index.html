@@ -6,7 +6,7 @@
   <title>Your Day, In Motion</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -24,88 +24,168 @@
     <span class="hud-bar" id="bar" aria-hidden="true"></span>
   </header>
 
-  <!-- ============ The story: one tall scroll track ============ -->
   <main class="story" id="story">
-
     <!--
-      THE STAGE. position: sticky keeps it pinned to the screen while the
-      tall .story element scrolls past. Every visual lives in here and is
-      moved by script.js based on how far you've scrolled.
-      Layers are listed back-to-front.
+      THE STAGE stays pinned (position: sticky) while the tall .story scrolls.
+
+      Think of it as a film set seen through one camera. The whole day is
+      ONE long world laid out left to right:
+
+        bedroom (0–100vw) → park (100–300vw) → studio (300–400vw) → terrace (400–520vw)
+
+      Scrolling moves the camera sideways through that world. Each layer
+      below has a data-depth: how much it moves when the camera moves.
+        0.3 = far away (hills, city)    0.6 = middle (trees)
+        1   = the set itself            1.2 = right in front of the lens
+      That difference in speed is the parallax.
     -->
     <div class="stage" id="stage">
+
+      <!-- Sky, sun and clouds are "infinitely far away", so they don't pan.
+           Only the time of day changes them. -->
       <div class="sky" id="sky" aria-hidden="true"></div>
-      <div class="stars" id="stars" aria-hidden="true"></div>
-      <div class="hill hill-back" id="hillBack" aria-hidden="true"></div>
-      <div class="sun layer" id="sun" aria-hidden="true"></div>
-      <div class="hill hill-front" id="hillFront" aria-hidden="true"></div>
+      <div class="sun" id="sun" aria-hidden="true"><span class="sun-halo"></span><img src="images/sun.webp" alt="" width="188" height="183" /></div>
+      <div class="clouds" id="clouds" aria-hidden="true">
+        <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span>
+      </div>
+      <img class="birds" id="birds" src="images/birds.webp" alt="" width="134" height="76" aria-hidden="true" />
 
-      <div class="word" id="word" aria-hidden="true"><span>F</span><span>O</span><span>C</span><span>U</span><span>S</span></div>
-
-      <figure class="portrait layer" id="portrait">
-        <img id="portraitImg" src="images/morning-stretch.jpg" width="365" height="368"
-             alt="Illustration of a woman stretching on a yoga mat by a sunny window, with a water bottle beside her" />
-      </figure>
-
-      <div class="bits" aria-hidden="true">
-        <span class="bit layer bit--dot"></span>
-        <span class="bit layer bit--ring"></span>
-        <span class="bit layer bit--square"></span>
-        <span class="bit layer bit--pill"></span>
-        <span class="bit layer bit--half"></span>
-        <span class="bit layer bit--small"></span>
+      <!-- FAR: hills and the city skyline -->
+      <div class="layer" data-depth="0.3" aria-hidden="true">
+        <div class="track">
+          <div class="skyline">
+            <span style="left:139vw;width:3vw;top:52vh"></span>
+            <span style="left:142.5vw;width:2.4vw;top:47vh"></span>
+            <span style="left:145.5vw;width:3.6vw;top:55vh"></span>
+            <span style="left:149.8vw;width:2.2vw;top:43vh"></span>
+            <span style="left:152.6vw;width:3.2vw;top:50vh"></span>
+            <span style="left:156.4vw;width:2.6vw;top:56vh"></span>
+            <span style="left:159.6vw;width:3.8vw;top:46vh"></span>
+            <span style="left:164vw;width:2.2vw;top:53vh"></span>
+            <span style="left:166.8vw;width:3vw;top:49vh"></span>
+            <span style="left:170.4vw;width:2.6vw;top:57vh"></span>
+            <span style="left:173.6vw;width:3.4vw;top:51vh"></span>
+            <span style="left:177.6vw;width:2.4vw;top:45vh"></span>
+            <span style="left:180.6vw;width:3.2vw;top:54vh"></span>
+          </div>
+          <svg class="hills" viewBox="0 0 2500 480" preserveAspectRatio="none">
+            <path class="hill-far" d="M0,480 L0,143 C125,143 125,124 250,124 C375,124 375,165 500,165 C625,165 625,132 750,132 C875,132 875,119 1000,119 C1125,119 1125,166 1250,166 C1375,166 1375,239 1500,239 C1625,239 1625,222 1750,222 C1875,222 1875,217 2000,217 C2125,217 2125,141 2250,141 C2375,141 2375,185 2500,185 L2500,480 Z" />
+            <path class="hill-near" d="M0,480 L0,255 C90,255 90,246 180,246 C270,246 270,240 360,240 C450,240 450,249 540,249 C630,249 630,313 720,313 C810,313 810,305 900,305 C990,305 990,303 1080,303 C1170,303 1170,302 1260,302 C1350,302 1350,247 1440,247 C1530,247 1530,258 1620,258 C1710,258 1710,286 1800,286 C1890,286 1890,296 1980,296 C2070,296 2070,307 2160,307 C2250,307 2250,309 2340,309 C2430,309 2430,238 2500,238 L2500,480 Z" />
+          </svg>
+        </div>
       </div>
 
-      <div class="hero" id="hero">
-        <p class="eyebrow">A day in four chapters</p>
-        <h1>Your Day,<br />In Motion</h1>
-        <p class="lede">Scroll slowly. The sun keeps time.</p>
+      <!-- MIDDLE: park trees and a hedge -->
+      <div class="layer" data-depth="0.6" aria-hidden="true">
+        <div class="track">
+          <span class="tree" style="left:72vw;--h:30"></span>
+          <span class="tree" style="left:95vw;--h:22"></span>
+          <span class="tree" style="left:121vw;--h:34"></span>
+          <span class="tree" style="left:146vw;--h:26"></span>
+          <span class="tree" style="left:172vw;--h:31"></span>
+          <span class="tree" style="left:199vw;--h:24"></span>
+        </div>
+      </div>
+
+      <!-- THE SET: rooms, ground and the character -->
+      <div class="layer" data-depth="1">
+        <div class="track">
+
+          <!-- 01 WAKE: bedroom -->
+          <section class="room room-wake" aria-label="Bedroom, early morning">
+            <div class="glow"></div>
+            <div class="window window-arch"><i class="bar-v"></i><i class="bar-h"></i></div>
+            <span class="curtain" aria-hidden="true"></span>
+            <span class="sill"></span>
+            <div class="floor"></div>
+            <div class="lightfall" id="lightfall"></div>
+            <span class="bed"></span>
+            <span class="contact" style="left:3vw;bottom:3.4vh;width:46vw"></span>
+            <img class="char char-wake" src="images/wake.webp" width="513" height="472"
+                 alt="A woman stretching her arms up as she wakes in bed" />
+            <img class="plant" src="images/plant.webp" width="157" height="168" alt="" />
+            <span class="cut cut-right"></span>
+          </section>
+
+          <!-- 02 MOVE: outside -->
+          <section class="outside" aria-label="Park path, morning">
+            <div class="grass"></div>
+            <div class="path"></div>
+            <span class="bush" style="left:62vw"></span>
+            <span class="bush small" style="left:138vw"></span>
+          </section>
+
+          <div class="walker" id="walker">
+            <span class="contact"></span>
+            <img class="char char-walk" src="images/walk.webp" width="220" height="463"
+                 alt="The same woman walking with a tote bag over her shoulder" />
+          </div>
+
+          <!-- 03 FOCUS: studio -->
+          <section class="room room-focus" aria-label="Studio, afternoon">
+            <span class="cut cut-left"></span>
+            <div class="window window-grid"><i class="bar-v a"></i><i class="bar-v b"></i><i class="bar-h"></i></div>
+            <div class="floor"></div>
+            <div class="sunpatch" id="sunpatch"></div>
+            <span class="desk-top"></span>
+            <span class="desk-front"></span>
+            <span class="contact" style="left:44vw;bottom:29.2vh;width:34vw"></span>
+            <img class="char char-focus" src="images/focus.webp" width="486" height="348"
+                 alt="She works at a laptop, chin in hand, with books, a mug and a plant on the desk" />
+            <span class="cut cut-right"></span>
+          </section>
+
+          <!-- 04 RESET: terrace -->
+          <section class="terrace" aria-label="Terrace, sunset">
+            <div class="parapet"></div>
+            <div class="terrace-floor"></div>
+            <img class="mug" src="images/mug.webp" width="95" height="124" alt="" />
+            <span class="contact" style="left:49vw;bottom:2.6vh;width:30vw"></span>
+            <img class="char char-rest" src="images/rest.webp" width="369" height="324"
+                 alt="She sits cross-legged with headphones on, eyes closed, resting" />
+          </section>
+        </div>
+      </div>
+
+      <!-- IN FRONT OF THE LENS: an out-of-focus leaf in the studio -->
+      <div class="layer" data-depth="1.2" aria-hidden="true">
+        <div class="track">
+          <img class="front-leaf" src="images/leaf.webp" width="215" height="323" alt="" />
+        </div>
+      </div>
+
+      <!-- Colour grade: one light over everything, like a film grade -->
+      <div class="grade" id="grade" aria-hidden="true"></div>
+
+      <!-- TYPE: each block is anchored to a place in the world -->
+      <div class="type">
+        <div class="copy copy-wake" id="copyWake">
+          <p class="eyebrow">01 — Wake</p>
+          <h2>Start slowly.</h2>
+          <p>There’s no need to rush into the day.</p>
+        </div>
+        <div class="copy copy-move" id="copyMove">
+          <p class="eyebrow">02 — Move</p>
+          <h2>Get the body going.</h2>
+          <p>A walk around the block, a stretch, the long way to the coffee.</p>
+        </div>
+        <div class="copy copy-focus" id="copyFocus">
+          <p class="eyebrow">03 — Focus</p>
+          <h2>Narrow the world.</h2>
+          <p>One task. One window. One hour.</p>
+        </div>
+        <div class="copy copy-reset" id="copyReset">
+          <p class="eyebrow">04 — Reset</p>
+          <h2>Leave some room for nothing.</h2>
+          <p>Take a breath. You’ve done enough for today.</p>
+        </div>
+        <div class="copy copy-final" id="copyFinal">
+          <h2>Tomorrow is another day.</h2>
+          <button type="button" class="again" id="restart">Start again <span aria-hidden="true">→</span></button>
+        </div>
       </div>
 
       <p class="scroll-hint" id="hint" aria-hidden="true">Scroll <span class="hint-line"></span></p>
-
-      <div class="finale" id="finale" inert>
-        <p class="finale-note">22:00 &middot; Same sun, new day</p>
-        <button type="button" class="cta" id="restart">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" /></svg>
-          Start again
-        </button>
-      </div>
-    </div>
-
-    <!--
-      THE COPY. These sections scroll normally on top of the stage.
-      Their position on screen also sets their opacity (see script.js).
-    -->
-    <div class="chapters">
-      <section class="chapter">
-        <div class="copy">
-          <p class="eyebrow">01 — Wake</p>
-          <h2>Let the light arrive first.</h2>
-          <p>Before the inbox and before the news, there are a few minutes where the room just gets brighter. Stay in them a little longer.</p>
-        </div>
-      </section>
-      <section class="chapter">
-        <div class="copy">
-          <p class="eyebrow">02 — Move</p>
-          <h2>Get the body going.</h2>
-          <p>A walk round the block, a stretch, the long way to the coffee. Momentum is easier to keep than to find.</p>
-        </div>
-      </section>
-      <section class="chapter">
-        <div class="copy">
-          <p class="eyebrow">03 — Focus</p>
-          <h2>Narrow the world.</h2>
-          <p>One task, one window, one hour. Everything else can wait at the edge of the screen.</p>
-        </div>
-      </section>
-      <section class="chapter">
-        <div class="copy">
-          <p class="eyebrow">04 — Reset</p>
-          <h2>Bring the pieces back together.</h2>
-          <p>The light goes soft and everything you carried today settles into place. Tomorrow starts from here.</p>
-        </div>
-      </section>
     </div>
   </main>
 

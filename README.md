@@ -15,14 +15,14 @@ A pill-shaped button that is drawn toward your cursor, stretches in its directio
 
 ## 02 — Your Day, In Motion
 
-A scroll-driven story in four chapters: Wake, Move, Focus and Reset. The visuals stay pinned to the screen (a sticky stage) while the text scrolls past, and every animation is tied to how far you've scrolled.
+A scroll-driven story of one person's day: Wake, Move, Focus and Reset. The whole day is one continuous world (bedroom → park → studio → terrace), and scrolling moves a camera sideways through it while the light changes from dawn to dusk.
 
 **Files** (in `your-day-in-motion/`)
-- `index.html`: the stage layers and the four chapters of text
-- `images/morning-stretch.jpg`: the main illustration
-- `style.css`: layout, type and the starting colours
-- `script.js`: turns scroll position into progress (0 → 1) and moves everything along keyframe "tracks"
+- `index.html`: the world, built in depth layers (far hills and city, middle trees, the set, a foreground leaf) plus the text
+- `style.css`: how each scene is drawn and laid out
+- `script.js`: turns scroll into progress (0 → 1), then works out the camera, the time of day, the walker and the text from it
+- `images/`: the character and props, cut out from the illustration sheet
 
 **Run it:** double-click `your-day-in-motion/index.html`.
 
-**Experiment:** edit the keyframes in `buildTracks()` and `COLORS` in `script.js`. Each `at:` value is a point in the scroll, from 0 (the start) to 1 (the end).
+**Experiment:** the `camera`, `dolly`, `walk` and `COLORS` definitions near the top of `script.js` control the whole story. Each pair is `[progress, value]`.

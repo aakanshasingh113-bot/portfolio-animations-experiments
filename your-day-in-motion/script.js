@@ -1,17 +1,24 @@
 /* ==================================================================
-   Your Day, In Motion — scroll-driven animation
+   Your Day, In Motion — a camera moving through one world
 
-   The whole page runs on ONE number: progress, from 0 (top of the
-   story) to 1 (the end). Every element has a "track": a list of
-   keyframes saying where it should be at certain progress values.
-   Each frame we read the scroll position, turn it into progress, and
-   ask every track "where should you be right now?"
+   The whole page runs on ONE number: progress, from 0 (top) to 1 (end).
 
-   Chapters on the timeline:
-     0.00 – 0.25  WAKE
-     0.25 – 0.50  MOVE
-     0.50 – 0.75  FOCUS
-     0.75 – 1.00  RESET
+   From progress we work out a handful of things, and ONLY these move:
+     • the camera   – how far along the world we are looking
+     • the dolly    – a very slow push in / pull out
+     • the time     – sky, light, colours and the sun's position
+     • the walker   – she walks through the park in MOVE
+     • the birds    – they cross the evening sky in RESET
+     • the type     – each block fades in where it lives in the world
+
+   Everything else (rooms, furniture, trees, hills) is fixed in place.
+   It only moves on screen because the camera moves, and each layer
+   moves by a different amount depending on its depth. That's what
+   keeps everything feeling like one place.
+
+   Timeline (progress):
+     0.00 ─ WAKE ─ 0.12 ── walk outside ── 0.26 ─ MOVE ─ 0.46 ── into the studio ──
+     0.58 ─ FOCUS ─ 0.72 ── out to the terrace ── 0.82 ─ RESET ─ 1.00
    ================================================================== */
 
 const $ = (sel) => document.querySelector(sel);
@@ -19,23 +26,25 @@ const $ = (sel) => document.querySelector(sel);
 const root = document.documentElement;
 const story = $("#story");
 const sky = $("#sky");
-const starsEl = $("#stars");
-const hillBack = $("#hillBack");
-const hillFront = $("#hillFront");
 const sun = $("#sun");
-const portrait = $("#portrait");
-const portraitImg = $("#portraitImg");
-const word = $("#word");
-const letters = [...word.children];
-const bits = [...document.querySelectorAll(".bit")];
-const hero = $("#hero");
+const sunImg = sun.querySelector("img");
+const clouds = $("#clouds");
+const birds = $("#birds");
+const grade = $("#grade");
+const lightfall = $("#lightfall");
+const sunpatch = $("#sunpatch");
+const walker = $("#walker");
 const hint = $("#hint");
-const finale = $("#finale");
-const restart = $("#restart");
-const sections = [...document.querySelectorAll(".chapter")];
-const navButtons = [...document.querySelectorAll("[data-go]")];
 const clock = $("#clock");
 const bar = $("#bar");
+const navButtons = [...document.querySelectorAll("[data-go]")];
+const restart = $("#restart");
+
+const layers = [...document.querySelectorAll(".layer")].map((el) => ({
+  el,
+  track: el.firstElementChild,
+  depth: parseFloat(el.dataset.depth),
+}));
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -44,15 +53,11 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").match
    ------------------------------------------------------------------ */
 const clamp = (v, min = 0, max = 1) => Math.min(max, Math.max(min, v));
 const lerp = (a, b, t) => a + (b - a) * t;
-
-// Where is p between a and b? Returns 0 before a, 1 after b, and
-// a smooth 0→1 in between. This is how a chapter gets its own progress.
-const range = (p, a, b) => clamp((p - a) / (b - a));
+const range = (p, a, b) => clamp((p - a) / (b - a)); // 0 before a, 1 after b
 
 const ease = {
   inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
   out: (t) => 1 - Math.pow(1 - t, 3),
-  linear: (t) => t,
 };
 
 const hexToRgb = (h) => {
@@ -61,21 +66,49 @@ const hexToRgb = (h) => {
 };
 const rgba = (c, a = 1) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
 
-/* ------------------------------------------------------------------
-   Keyframe tracks
-   track([...]) tidies a list of keyframes: any value you leave out is
-   copied from the keyframe before it (so { at: 0.3 } means "hold still
-   until 0.3"), and colours become numbers we can blend.
-   sample(track, p) returns the in-between values for progress p.
-   ------------------------------------------------------------------ */
+/* A smooth curve through a list of [progress, value] points.
+   Unlike easing between keyframes one by one, this keeps the SPEED
+   continuous: the camera never stops dead at a keyframe and lurches off
+   again. Flat stretches (same value twice) become real holds.
+   (The technique is called monotone cubic interpolation.) */
+function curve(points) {
+  const n = points.length;
+  const xs = points.map((pt) => pt[0]);
+  const ys = points.map((pt) => pt[1]);
+  const slope = [];
+  for (let i = 0; i < n - 1; i++) slope.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+
+  const m = [slope[0]];
+  for (let i = 1; i < n - 1; i++) m.push(slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2);
+  m.push(slope[n - 2]);
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / slope[i];
+    const b = m[i + 1] / slope[i];
+    const s = a * a + b * b;
+    if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * slope[i]; m[i + 1] = t * b * slope[i]; }
+  }
+
+  return (p) => {
+    if (p <= xs[0]) return ys[0];
+    if (p >= xs[n - 1]) return ys[n - 1];
+    let i = 0;
+    while (p > xs[i + 1]) i++;
+    const h = xs[i + 1] - xs[i];
+    const t = (p - xs[i]) / h;
+    const t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i]
+         + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
+  };
+}
+
+/* Colour keyframes. Values you leave out are held from the previous
+   keyframe, so { at: 0.5 } means "no change until 0.5". */
 function track(frames) {
   let prev = {};
   return frames.map((f) => {
-    const out = { ...prev, ease: "inOut" };
-    for (const key in f) {
-      const v = f[key];
-      out[key] = typeof v === "string" && v[0] === "#" ? hexToRgb(v) : v;
-    }
+    const out = { ...prev };
+    for (const key in f) out[key] = typeof f[key] === "string" ? hexToRgb(f[key]) : f[key];
     prev = out;
     return out;
   });
@@ -85,306 +118,224 @@ function sample(tr, p) {
   if (p <= tr[0].at) return tr[0];
   const last = tr[tr.length - 1];
   if (p >= last.at) return last;
-
   let i = 0;
   while (p > tr[i + 1].at) i++;
-  const a = tr[i];
-  const b = tr[i + 1];
-  const t = ease[b.ease](range(p, a.at, b.at));
-
+  const a = tr[i], b = tr[i + 1];
+  const t = ease.inOut(range(p, a.at, b.at));
   const out = {};
   for (const key in b) {
-    if (key === "at" || key === "ease") continue;
-    const va = a[key];
-    const vb = b[key];
-    out[key] = Array.isArray(vb) ? vb.map((x, j) => lerp(va[j], x, t)) : lerp(va, vb, t);
+    out[key] = Array.isArray(b[key]) ? b[key].map((x, j) => lerp(a[key][j], x, t)) : lerp(a[key], b[key], t);
   }
   return out;
 }
 
 /* ------------------------------------------------------------------
-   The colour of the day
+   1. CAMERA: where we are looking, in vw along the world.
+      bedroom 0 · park 100–300 · studio 300 · terrace 400
    ------------------------------------------------------------------ */
-const COLORS = track([
-  // pre-dawn
-  { at: 0.00, top: "#141a33", bottom: "#3d3456", fg: "#f3eee6", imgB: 0.62, imgS: 0.7, imgW: 0.15,
-    hillB: "#2a2947", hillF: "#1b1b33", sunA: "#ffc27a", sunB: "#ff7a59", glow: 0.35, accent: "#ff9a6b" },
-  // WAKE: morning
-  { at: 0.10, top: "#a9c1dd", bottom: "#f8dcc4", fg: "#1b1f2e", imgB: 1, imgS: 1, imgW: 0,
-    hillB: "#c7a79d", hillF: "#8f7a86", sunA: "#ffe39a", sunB: "#ff9d4d", glow: 0.6, accent: "#f08a4b" },
-  { at: 0.30 },
-  // MOVE: bright midday
-  { at: 0.45, top: "#8ec3e6", bottom: "#eef3ef", hillB: "#b4d0bd", hillF: "#7fa68f",
-    sunA: "#fff1b0", sunB: "#ffc24d", glow: 0.5, accent: "#e7883f" },
-  { at: 0.50 },
-  // FOCUS: deep, quiet afternoon
-  { at: 0.60, top: "#0d1a21", bottom: "#1c3b40", fg: "#e8f0ec", imgB: 0.82, imgS: 0.75, imgW: 0,
-    hillB: "#173033", hillF: "#0f2326", sunA: "#f3d9a8", sunB: "#c98e5c", glow: 0.25, accent: "#e0a46a" },
-  { at: 0.76 },
-  // RESET: dusk
-  { at: 0.88, top: "#2a1d3d", bottom: "#ec8a6a", fg: "#fff4ec", imgB: 0.9, imgS: 0.95, imgW: 0.35,
-    hillB: "#5b3654", hillF: "#3a2240", sunA: "#ffb070", sunB: "#ea5a6e", glow: 0.55, accent: "#ffb27a" },
+const camera = curve([
+  [0.00, 0],
+  [0.12, 0],     // WAKE: hold on the bedroom
+  [0.26, 105],   // step outside
+  [0.46, 195],   // MOVE: track alongside her through the park
+  [0.58, 300],   // arrive in the studio
+  [0.72, 302],   // FOCUS: almost perfectly still
+  [0.82, 405],   // out onto the terrace
+  [1.00, 410],   // RESET: drift to a stop
+]);
+
+// The dolly: 1 = normal. The set settles in at the start, the studio is
+// slowly pushed in on (focus), and the terrace slowly opens up.
+const dolly = curve([
+  [0.00, 1.035], [0.12, 1], [0.58, 1], [0.72, 1.03], [0.82, 1.012], [1.00, 1],
+]);
+
+// The walker's position in the world (vw). She starts walking just as
+// the park comes into view, and keeps going as the camera moves on.
+const walk = curve([
+  [0.00, 118], [0.14, 118], [0.26, 142], [0.46, 240], [0.60, 272], [1.00, 272],
 ]);
 
 /* ------------------------------------------------------------------
-   Layout state (recalculated on resize)
-   Positions in the tracks are fractions of the stage:
-   x: 0 = left edge, 1 = right edge. y: 0 = top, 1 = bottom.
+   2. TIME OF DAY
    ------------------------------------------------------------------ */
-let W = 0, H = 0, narrow = false;
-let sizes = {};
-let tracks = {};
+const COLORS = track([
+  // dawn
+  { at: 0.00, skyTop: "#b6c6df", skyBottom: "#f4c6a4", ink: "#2b2622", grade: "#ffd6bd", gradeA: 0.24,
+    hillFar: "#d5c3c3", hillNear: "#c4b0b2", city: "#b9b4bd", tree: "#9aa98e", hedge: "#8b9b80",
+    grass: "#b6b48f", path: "#eadbc6", cloud: 0.55, sunHue: 0, sunSat: 1, light: 1 },
+  { at: 0.12, gradeA: 0.16 },
+  // morning into midday
+  { at: 0.30, skyTop: "#a9cae6", skyBottom: "#edf1e8", grade: "#ffffff", gradeA: 0,
+    hillFar: "#c1d0c4", hillNear: "#a9bea9", city: "#b8c3cc", tree: "#8ea585", hedge: "#7f9776",
+    grass: "#abb98d", path: "#e9ddc7", cloud: 0.75, light: 0.6 },
+  { at: 0.50 },
+  // calm afternoon
+  { at: 0.62, skyTop: "#b7c7d5", skyBottom: "#ece6d7", grade: "#e2e9ef", gradeA: 0.14,
+    hillFar: "#c3cac6", hillNear: "#afbcb4", city: "#aab4bd", cloud: 0.45, light: 0.8 },
+  { at: 0.72 },
+  { at: 0.78, ink: "#2b2622" },
+  // sunset
+  { at: 0.86, skyTop: "#5e4b6f", skyBottom: "#f3aa84", ink: "#fbf1e8", grade: "#ffb996", gradeA: 0.3,
+    hillFar: "#a07b86", hillNear: "#7d5b6b", city: "#b98389", tree: "#6b5567", hedge: "#5f4b5d",
+    grass: "#7a5c62", path: "#b8907f", cloud: 0.35, sunHue: -16, sunSat: 1.35, light: 0.4 },
+  // dusk
+  { at: 1.00, skyTop: "#3b2f52", skyBottom: "#e88f74", grade: "#f2a08a", gradeA: 0.36,
+    hillFar: "#87657a", hillNear: "#634a5e", city: "#a87480", cloud: 0.25, sunHue: -26, sunSat: 1.5, light: 0.2 },
+]);
 
-// On phones the visuals sit in the top part of the screen, so we squeeze
-// the desktop positions into that area instead of writing a second set.
-function fit(x, y) {
-  return narrow ? [0.5 + (x - 0.66) * 1.4, y * 0.68] : [x, y];
-}
-function fitFrames(frames) {
-  return frames.map((f) => {
-    if (!("x" in f)) return f;
-    const [x, y] = fit(f.x, f.y);
-    return { ...f, x, y };
-  });
-}
-
-function buildTracks() {
-  tracks.sun = track(fitFrames([
-    { at: 0.00, x: 0.64, y: 1.02, s: 0.92 },
-    { at: 0.20, x: 0.64, y: 0.44, s: 1.00 },   // WAKE: rises
-    { at: 0.28 },
-    { at: 0.46, x: 0.87, y: 0.24, s: 0.60 },   // MOVE: drifts to the side
-    { at: 0.55 },
-    { at: 0.68, x: 0.88, y: 0.20, s: 0.46 },   // FOCUS: small and out of the way
-    { at: 0.78 },
-    { at: 0.94, x: 0.66, y: 0.45, s: 1.05 },   // RESET: back to the centre
-  ]));
-
-  tracks.portrait = track(fitFrames([
-    { at: 0.00, x: -0.25, y: 0.53, s: 1, r: -8 },
-    { at: 0.22 },
-    { at: 0.34, x: 0.55, y: 0.53, s: 1, r: 0 }, // MOVE: slides in from the left (before the text arrives)
-    { at: 0.52 },
-    { at: 0.66, x: 0.67, y: 0.425, s: 0.5 },   // FOCUS: scales down, sits on the word
-    { at: 0.78 },
-    { at: 0.94, x: 0.66, y: 0.5, s: 0.82 },    // RESET: in front of the sun
-  ]));
-
-  // Small shapes: scattered → around the illustration → a tidy row → a ring
-  const rest = [[0.43, 0.31], [0.63, 0.29], [0.73, 0.55], [0.41, 0.68], [0.70, 0.80], [0.53, 0.87]];
-  const sunEnd = tracks.sun[tracks.sun.length - 1];
-  const ringR = (sizes.sun.w * 1.05) / 2 + Math.max(34, Math.min(W, H) * 0.06);
-
-  tracks.bits = bits.map((el, i) => {
-    const d = i * 0.022; // stagger, so they don't all move at once
-    const [rx, ry] = rest[i];
-    const fromX = rx + (rx > 0.55 ? 0.5 : -0.6);
-    const fromY = ry - 0.5 + i * 0.2;
-    const rowX = 0.47 + i * (0.42 / 5);
-    const angle = -Math.PI / 2 + (i * Math.PI * 2) / bits.length;
-
-    const frames = fitFrames([
-      { at: 0.00, x: fromX, y: fromY, s: 0.6, r: -140, op: 0 },
-      { at: 0.27 + d },
-      { at: 0.41 + d, x: rx, y: ry, s: 1, r: 0, op: 1 },          // MOVE
-      { at: 0.53 + d * 0.6 },
-      { at: 0.66 + d * 0.6, x: rowX, y: 0.86, s: 0.85, r: 0, op: 0.9 }, // FOCUS
-      { at: 0.77 + d * 0.5 },
-    ]);
-    // RESET: the ring is worked out around the sun's final position
-    frames.push({
-      at: 0.92 + d * 0.4,
-      x: sunEnd.x + (Math.cos(angle) * ringR) / W,
-      y: sunEnd.y + (Math.sin(angle) * ringR) / H,
-      s: 0.9, r: 180, op: 1,
-    });
-    return track(frames);
-  });
-}
+/* ------------------------------------------------------------------
+   Layout (recalculated on resize)
+   ------------------------------------------------------------------ */
+let W = 0, H = 0, sunSize = 0, birdsW = 0;
+let sunX, sunY, birdX, birdY;
 
 function measure() {
   W = window.innerWidth;
   H = window.innerHeight;
-  narrow = W <= 720;
-  sizes = {
-    sun: { w: sun.offsetWidth, h: sun.offsetHeight },
-    portrait: { w: portrait.offsetWidth, h: portrait.offsetHeight },
-    bits: bits.map((b) => ({ w: b.offsetWidth, h: b.offsetHeight })),
-  };
-  buildTracks();
+  const narrow = W <= 720;
+  sunSize = sun.offsetWidth;
+  birdsW = birds.offsetWidth;
+
+  // The sun's path across the screen, in vw / vh. It's timed so you see it
+  // through the bedroom window at dawn and the studio window in the
+  // afternoon, then it sets beside her on the terrace.
+  sunX = curve(narrow
+    ? [[0, 66], [0.12, 66], [0.3, 76], [0.5, 80], [0.62, 64], [0.72, 68], [0.84, 80], [1, 82]]
+    : [[0, 24], [0.12, 25], [0.3, 58], [0.5, 70], [0.62, 72], [0.72, 76], [0.84, 85], [0.97, 87], [1, 87]]);
+  sunY = curve(narrow
+    ? [[0, 66], [0.12, 46], [0.3, 40], [0.5, 42], [0.62, 46], [0.72, 48], [0.84, 54], [0.97, 69], [1, 72]]
+    : [[0, 60], [0.12, 36], [0.3, 15], [0.5, 10], [0.62, 16], [0.72, 21], [0.84, 36], [0.97, 70], [1, 73]]);
+  birdX = curve([[0.84, narrow ? 8 : 46], [1, narrow ? 36 : 68]]);
+  birdY = curve([[0.84, narrow ? 40 : 30], [1, narrow ? 34 : 20]]);
   needsRender = true;
 }
 
 /* ------------------------------------------------------------------
-   Stars (generated once, from a fixed seed so they never jump around)
+   Type: each block belongs somewhere in the world (`at`, in camera vw)
+   and moves with it. `depth` < 1 lets MOVE's text drift slowly with the
+   landscape instead of rushing past with the path.
    ------------------------------------------------------------------ */
-(function makeStars() {
-  let seed = 7;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 40; i++) {
-    const s = document.createElement("span");
-    const size = 1 + rand() * 1.8;
-    s.className = "star";
-    s.style.cssText = `left:${rand() * 100}%;top:${rand() * 60}%;width:${size}px;height:${size}px;opacity:${0.3 + rand() * 0.6}`;
-    starsEl.appendChild(s);
+const COPY = [
+  { el: $("#copyWake"),  at: 0,   depth: 1,    show: [-1, 0],       hide: [0.1, 0.16] },
+  { el: $("#copyMove"),  at: 150, depth: 0.14, show: [0.26, 0.33],  hide: [0.44, 0.5] },
+  { el: $("#copyFocus"), at: 300, depth: 1,    show: [0.57, 0.63],  hide: [0.71, 0.75], sharpen: [0.57, 0.7] },
+  { el: $("#copyReset"), at: 405, depth: 1,    show: [0.83, 0.88],  hide: [0.91, 0.94] },
+  { el: $("#copyFinal"), at: 410, depth: 1,    show: [0.945, 0.975], hide: [2, 3] },
+];
+
+function renderCopy(p, cam) {
+  for (const c of COPY) {
+    const tin = ease.out(range(p, c.show[0], c.show[1]));
+    const tout = ease.inOut(range(p, c.hide[0], c.hide[1]));
+    const x = (c.at - cam) * c.depth * W / 100;
+    const y = (1 - tin) * 18 - tout * 12;
+    let opacity = tin * (1 - tout);
+    let extra = "";
+
+    // FOCUS: the heading comes into focus as the room goes quiet
+    if (c.sharpen) {
+      const s = ease.out(range(p, c.sharpen[0], c.sharpen[1]));
+      opacity *= 0.55 + 0.45 * s;
+      c.el.style.filter = reduceMotion ? "none" : `blur(${(1 - s) * 5}px)`;
+      extra = ` scale(${0.985 + 0.015 * s})`;
+    }
+    c.el.style.opacity = opacity;
+    c.el.style.transform = `translate3d(${x}px, ${y}px, 0)${extra}`;
   }
-})();
+  // "Start again" waits a moment after the last line
+  const again = ease.out(range(p, 0.972, 0.995));
+  restart.style.opacity = again;
+  restart.style.transform = `translateY(${(1 - again) * 8}px)`;
+  restart.disabled = again < 0.5;
+}
 
 /* ------------------------------------------------------------------
-   Input: scroll position and (for subtle parallax) the pointer
+   Render one frame
+   ------------------------------------------------------------------ */
+let activeChapter = -1;
+
+function render(p) {
+  const c = sample(COLORS, p);
+  const cam = camera(p);
+  const d = dolly(p);
+
+  // Time of day
+  root.style.setProperty("--ink", rgba(c.ink));
+  for (const key of ["hillFar", "hillNear", "city", "tree", "hedge", "grass", "path"]) {
+    root.style.setProperty("--" + key.replace(/[A-Z]/g, (ch) => "-" + ch.toLowerCase()), rgba(c[key]));
+  }
+  sky.style.background = `linear-gradient(180deg, ${rgba(c.skyTop)} 0%, ${rgba(c.skyBottom)} 78%)`;
+  grade.style.backgroundColor = rgba(c.grade, c.gradeA);
+  clouds.style.opacity = c.cloud;
+  lightfall.style.opacity = c.light;
+  sunpatch.style.opacity = c.light;
+
+  sun.style.transform = `translate3d(${sunX(p) * W / 100 - sunSize / 2}px, ${sunY(p) * H / 100 - sunSize / 2}px, 0)`;
+  sunImg.style.filter = `hue-rotate(${c.sunHue}deg) saturate(${c.sunSat})`;
+
+  // Camera + dolly. Each layer pans and scales in proportion to its depth.
+  for (const L of layers) {
+    L.track.style.transform = `translate3d(${-cam * L.depth * W / 100}px, 0, 0)`;
+    L.el.style.transform = `scale(${1 + (d - 1) * L.depth})`;
+  }
+
+  // The walker moves through the world (she's inside the set layer)
+  walker.style.transform = `translate3d(${walk(p) * W / 100}px, 0, 0)`;
+
+  // Birds only fly at dusk
+  const b = range(p, 0.84, 1);
+  birds.style.opacity = Math.min(ease.out(range(p, 0.84, 0.88)), 1 - range(p, 0.97, 1)) * 0.85;
+  birds.style.transform = `translate3d(${birdX(p) * W / 100 - birdsW / 2}px, ${birdY(p) * H / 100}px, 0) scale(${1 - b * 0.25})`;
+
+  renderCopy(p, cam);
+  hint.style.opacity = 1 - range(p, 0, 0.03);
+
+  // Header: 06:00 → 22:00, progress line, current chapter
+  const minutes = Math.floor(6 * 60 + p * 16 * 60);
+  clock.textContent = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  bar.style.transform = `scaleX(${p})`;
+  const chapter = p < 0.2 ? 0 : p < 0.52 ? 1 : p < 0.78 ? 2 : 3;
+  if (chapter !== activeChapter) {
+    navButtons.forEach((btn, i) => btn.classList.toggle("is-active", i === chapter));
+    activeChapter = chapter;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Scroll → progress, smoothed
    ------------------------------------------------------------------ */
 function scrollProgress() {
   const scrollable = story.offsetHeight - window.innerHeight;
   return clamp((window.scrollY - story.offsetTop) / scrollable);
 }
 
-let target = scrollProgress();
-let progress = target;          // the smoothed value we actually animate with
-let pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-let needsRender = true;
-
-window.addEventListener("pointermove", (e) => {
-  if (reduceMotion || e.pointerType === "touch") return;
-  pointer.tx = (e.clientX / W - 0.5) * 2;   // -1 … 1
-  pointer.ty = (e.clientY / H - 0.5) * 2;
-});
-
-window.addEventListener("resize", measure);
-document.fonts?.ready.then(measure);
-
-// Header buttons jump to the middle of each chapter
 const scrollToProgress = (p) => {
   const scrollable = story.offsetHeight - window.innerHeight;
   window.scrollTo({ top: story.offsetTop + p * scrollable, behavior: reduceMotion ? "auto" : "smooth" });
 };
-navButtons.forEach((btn) => btn.addEventListener("click", () => scrollToProgress(+btn.dataset.go * 0.25 + 0.125)));
+const CHAPTER_STOPS = [0.04, 0.36, 0.65, 0.9];
+navButtons.forEach((btn) => btn.addEventListener("click", () => scrollToProgress(CHAPTER_STOPS[+btn.dataset.go])));
 restart.addEventListener("click", () => scrollToProgress(0));
 
-/* ------------------------------------------------------------------
-   Placing things
-   ------------------------------------------------------------------ */
-// Puts an element's centre at (x, y) on the stage. `depth` is how much
-// it follows the pointer: bigger number = feels closer to you.
-function place(el, size, f, depth, extraY = 0) {
-  const px = pointer.x * depth;
-  const py = pointer.y * depth;
-  const x = f.x * W - size.w / 2 + px;
-  const y = f.y * H - size.h / 2 + py + extraY;
-  el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${f.s}) rotate(${f.r || 0}deg)`;
-  if (f.op !== undefined) el.style.opacity = f.op;
-}
-
-/* ------------------------------------------------------------------
-   Render one frame for a given progress value p
-   ------------------------------------------------------------------ */
-let activeChapter = -1;
-
-function render(p) {
-  // 1. Colours
-  const c = sample(COLORS, p);
-  root.style.setProperty("--bg", rgba(c.top));
-  root.style.setProperty("--fg", rgba(c.fg));
-  root.style.setProperty("--accent", rgba(c.accent));
-  root.style.setProperty("--hill-b", rgba(c.hillB));
-  root.style.setProperty("--hill-f", rgba(c.hillF));
-  root.style.setProperty("--card", rgba(c.top, 0.55));
-  sky.style.background = `linear-gradient(180deg, ${rgba(c.top)} 0%, ${rgba(c.bottom)} 100%)`;
-  sun.style.background = `radial-gradient(circle at 50% 42%, ${rgba(c.sunA)} 0%, ${rgba(c.sunA)} 30%, ${rgba(c.sunB)} 100%)`;
-  sun.style.boxShadow = `0 0 ${H * 0.14}px ${H * 0.03}px ${rgba(c.sunB, c.glow)}`;
-
-  // 2. Background layers. Parallax: the further back a layer is, the
-  //    less it moves (both with scroll and with the pointer).
-  const wake = ease.inOut(range(p, 0, 0.25));
-  starsEl.style.opacity = 1 - range(p, 0, 0.08);
-  starsEl.style.transform = `translate3d(${pointer.x * 3}px, ${pointer.y * 3 - wake * H * 0.04}px, 0)`;
-  hillBack.style.transform = `translate3d(${pointer.x * 6}px, ${pointer.y * 4 + wake * H * 0.03}px, 0)`;
-  hillFront.style.transform = `translate3d(${pointer.x * 12}px, ${pointer.y * 6 + wake * H * 0.07}px, 0)`;
-
-  // 3. The sun
-  place(sun, sizes.sun, sample(tracks.sun, p), 9);
-
-  // 4. The illustration. Its colours are graded to the time of day,
-  //    and the image drifts inside its frame (the frame moves one way,
-  //    the picture slightly the other) for a sense of depth.
-  place(portrait, sizes.portrait, sample(tracks.portrait, p), 16);
-  const drift = range(p, 0.28, 0.94) - 0.5;   // -0.5 … 0.5 while on screen
-  portraitImg.style.transform =
-    `translate3d(${-pointer.x * 8}px, ${drift * -sizes.portrait.h * 0.1 - pointer.y * 6}px, 0)`;
-  portraitImg.style.filter =
-    `brightness(${c.imgB}) saturate(${c.imgS}) sepia(${c.imgW})`;
-
-  // 5. Small shapes (closest layer = most pointer movement)
-  bits.forEach((el, i) => place(el, sizes.bits[i], sample(tracks.bits[i], p), 26));
-
-  // 6. FOCUS: letters appear one by one, then the word lifts away in RESET
-  letters.forEach((letter, i) => {
-    const start = 0.53 + i * 0.022;
-    const t = ease.out(range(p, start, start + 0.06));
-    letter.style.opacity = t;
-    letter.style.transform = `translateY(${(1 - t) * 0.35}em)`;
-    letter.style.filter = reduceMotion ? "none" : `blur(${(1 - t) * 8}px)`;
-  });
-  const wordOut = ease.inOut(range(p, 0.76, 0.84));
-  word.style.opacity = 1 - wordOut;
-  word.style.translate = `${pointer.x * 12}px ${pointer.y * 8 - wordOut * H * 0.06}px`;
-
-  // 7. WAKE: hero heading fades and moves upward
-  const heroOut = range(p, 0, 0.09);
-  hero.style.opacity = 1 - ease.out(heroOut);
-  hero.style.translate = `0 ${-ease.out(heroOut) * H * 0.12}px`;
-  hint.style.opacity = 1 - range(p, 0, 0.03);
-
-  // 8. RESET: the call to action
-  const end = ease.out(range(p, 0.9, 0.98));
-  finale.style.opacity = end;
-  finale.style.translate = `0 ${(1 - end) * 24}px`;
-  finale.inert = end < 0.5;
-
-  // 9. Chapter copy: fades in as it reaches the middle of the screen,
-  //    and moves slightly faster than the scroll (foreground parallax).
-  const focal = narrow ? 0.78 : 0.5;
-  sections.forEach((section) => {
-    const r = section.getBoundingClientRect();
-    const d = (r.top + r.height / 2 - focal * H) / (H * 0.5);  // 0 = on the focal line
-    const visible = 1 - ease.inOut(range(Math.abs(d), 0.2, 0.6));
-    const copy = section.firstElementChild;
-    copy.style.opacity = visible;
-    copy.style.transform = `translate3d(0, ${d * H * 0.08}px, 0)`;
-  });
-
-  // 10. Header: clock runs 06:00 → 22:00, progress line, active chapter
-  const minutes = Math.floor(6 * 60 + p * 16 * 60);
-  clock.textContent = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-  bar.style.transform = `scaleX(${p})`;
-  const chapter = Math.min(3, Math.floor(p * 4));
-  if (chapter !== activeChapter) {
-    navButtons.forEach((b, i) => b.classList.toggle("is-active", i === chapter));
-    activeChapter = chapter;
-  }
-}
-
-/* ------------------------------------------------------------------
-   The loop
-   We don't jump straight to the scroll position. `progress` eases
-   toward it every frame, which smooths out jerky mouse wheels and
-   gives everything a little inertia.
-   ------------------------------------------------------------------ */
-let last = performance.now();
+let needsRender = true;
+let progress = scrollProgress();
 let renderedP = -1;
+let last = performance.now();
+
+window.addEventListener("resize", measure);
 
 function tick(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
 
-  target = scrollProgress();
-  progress = reduceMotion ? target : progress + (target - progress) * (1 - Math.exp(-dt * 7));
-
-  pointer.x += (pointer.tx - pointer.x) * (1 - Math.exp(-dt * 4));
-  pointer.y += (pointer.ty - pointer.y) * (1 - Math.exp(-dt * 4));
-  const pointerMoving = Math.abs(pointer.tx - pointer.x) + Math.abs(pointer.ty - pointer.y) > 0.001;
+  // Progress glides toward the real scroll position, which gives the
+  // camera a little weight instead of jumping with every wheel notch.
+  const target = scrollProgress();
+  progress = reduceMotion ? target : progress + (target - progress) * (1 - Math.exp(-dt * 5));
 
   // Only touch the page when something actually changed
-  if (needsRender || pointerMoving || Math.abs(progress - renderedP) > 0.00002) {
+  if (needsRender || Math.abs(progress - renderedP) > 0.00002) {
     render(progress);
     renderedP = progress;
     needsRender = false;

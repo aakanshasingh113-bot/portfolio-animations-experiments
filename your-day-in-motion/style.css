@@ -1,46 +1,52 @@
-/* Layout: a full-bleed sticky stage; chapter copy scrolls over it in a
-   left column on desktop, and as a bottom card on phones.
+/* Layout: one continuous side-on world (a cut-away "dollhouse" section of
+   bedroom → park → studio → terrace) seen through a sticky camera.
 
-   Colours below are only the starting values (pre-dawn). script.js
-   rewrites them every frame as the day progresses. */
+   Colours that change with the time of day are rewritten by script.js
+   every frame; these are the dawn values. Scene colours (walls, floors,
+   furniture) stay fixed and are lit by the .grade layer instead, so the
+   whole world shares one light. */
 :root {
-  --bg: #141a33;        /* sky top, also used as the page background */
-  --fg: #f3eee6;        /* text and line-work */
-  --accent: #ff9a6b;    /* warm shapes */
-  --hill-b: #2a2947;
-  --hill-f: #1b1b33;
-  --card: rgba(20, 26, 51, 0.55);
+  --ink: #2b2622;           /* type and header */
+  --hill-far: #d5c3c3;
+  --hill-near: #c4b0b2;
+  --city: #b9b4bd;
+  --tree: #9aa98e;
+  --hedge: #8b9b80;
+  --grass: #b6b48f;
+  --path: #eadbc6;
+
+  --wall-wake: #f2e4d6;
+  --floor-wake: #e6cfba;
+  --bed: #dcc4ae;
+  --wall-focus: #e7e4dc;
+  --floor-focus: #d7ccbc;
+  --desk: #c7ab8e;
+  --desk-front: #bfa588;
+  --parapet: #e6cdbd;
+  --terrace: #d6b6a5;
+  --section: #6e5a52;       /* the cut edge of a wall */
 
   --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --font-body: "Figtree", "Helvetica Neue", Arial, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
+  /* --u is the size unit for characters and props: it follows the screen
+     height, but never lets things get too wide on a narrow screen. */
+  --u: min(1vh, 0.9vw);
   --gutter: clamp(16px, 6vw, 96px);
-  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-
 html, body { margin: 0; }
 
 body {
-  background: var(--bg);
-  color: var(--fg);
+  background: #e9dccf;
+  color: var(--ink);
   font-family: var(--font-body);
-  font-size: 17px;
-  line-height: 1.6;
+  font-size: 18px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
-}
-
-.eyebrow {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.75;
 }
 
 /* ------------------------------------------------------------------
@@ -55,315 +61,438 @@ body {
   justify-content: space-between;
   gap: 16px;
   padding: calc(18px + env(safe-area-inset-top, 0px)) var(--gutter) 18px;
+  color: var(--ink);
   pointer-events: none;
 }
 
-.brand {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: -0.01em;
-}
+.brand { font: 600 15px/1 var(--font-display); letter-spacing: -0.01em; }
 
-.hud-nav { display: flex; gap: 4px; pointer-events: auto; }
+.hud-nav { display: flex; gap: 2px; pointer-events: auto; }
 
 .hud-nav button {
   display: flex;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border: 0;
   border-radius: 99px;
   background: none;
-  color: var(--fg);
-  font: 500 12px/1 var(--font-mono);
-  letter-spacing: 0.1em;
+  color: inherit;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: pointer;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
 }
 
-.hud-nav button:hover,
-.hud-nav button.is-active { opacity: 1; }
+.hud-nav button:hover, .hud-nav button.is-active { opacity: 1; }
 .hud-nav .num { opacity: 0.6; }
 
-.hud-nav button:focus-visible,
-.cta:focus-visible {
-  outline: 2px solid var(--fg);
+.hud-nav button:focus-visible, .again:focus-visible {
+  outline: 1.5px solid currentColor;
   outline-offset: 3px;
 }
 
-.hud-clock {
-  font: 500 14px/1 var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
+.hud-clock { font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
 
-/* Thin progress line along the very top */
 .hud-bar {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0 auto auto 0;
   width: 100%;
   height: 2px;
-  background: var(--fg);
-  opacity: 0.55;
+  background: currentColor;
+  opacity: 0.35;
   transform-origin: left;
   transform: scaleX(0);
 }
 
 /* ------------------------------------------------------------------
-   Story track + sticky stage
+   Story track + stage
    ------------------------------------------------------------------ */
-.story {
-  position: relative;
-  height: 500vh;          /* 400vh of scrolling = 4 chapters × 100vh */
-}
+.story { position: relative; height: 700vh; }
 
 .stage {
   position: sticky;
   top: 0;
   height: 100vh;
   overflow: hidden;
+  animation: stage-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Elements the script places with transform: translate(x, y) */
-.layer {
+@keyframes stage-in { from { opacity: 0; } }
+
+.sky { position: absolute; inset: 0; }
+
+.sun {
   position: absolute;
   left: 0;
   top: 0;
-  will-change: transform;
-}
-
-.sky, .stars { position: absolute; inset: 0; }
-
-.star {
-  position: absolute;
-  border-radius: 50%;
-  background: var(--fg);
-}
-
-.hill {
-  position: absolute;
-  height: 70vh;
-  border-radius: 50%;
-  will-change: transform;
-}
-
-.hill-back  { left: -45vw; width: 150vw; top: 72%; background: var(--hill-b); }
-.hill-front { left: -5vw;  width: 150vw; top: 79%; background: var(--hill-f); }
-
-.sun {
-  width: min(38vw, 52vh);
+  width: calc(var(--u) * 17);
   aspect-ratio: 1;
+  will-change: transform;
+}
+.sun img { position: relative; width: 100%; height: 100%; display: block; }
+.sun-halo {
+  position: absolute;
+  inset: -90%;
   border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 226, 170, 0.55), rgba(255, 226, 170, 0));
 }
 
-.portrait {
-  margin: 0;
-  width: 30vh;
-  height: 40vh;
-  overflow: hidden;
-  /* An arch: fully rounded top, softly rounded bottom (echoes the sun) */
-  border-radius: 999px 999px 28px 28px;
-  box-shadow: 0 30px 60px -20px rgba(10, 8, 20, 0.45);
-}
-
-/* The image is a little larger than its frame so it can drift inside
-   it: that's the parallax inside the frame. */
-.portrait img {
+.clouds { position: absolute; inset: 0; }
+.cloud {
   position: absolute;
-  left: -8%;
-  top: -8%;
-  width: 116%;
-  height: 116%;
-  object-fit: cover;
-  object-position: 42% 50%;
-  will-change: transform, filter;
+  height: 5vh;
+  border-radius: 50%;
+  background: #fff;
+  filter: blur(14px);
+  animation: drift 140s linear infinite alternate;
 }
+.c1 { left: 8vw;  top: 16vh; width: 22vw; opacity: 0.8; }
+.c2 { left: 48vw; top: 9vh;  width: 16vw; opacity: 0.6; animation-duration: 190s; }
+.c3 { left: 70vw; top: 24vh; width: 26vw; opacity: 0.5; animation-duration: 160s; }
+@keyframes drift { to { transform: translateX(-9vw); } }
 
-.bit { display: block; }
-.bit--dot    { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); }
-.bit--ring   { width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--fg); }
-.bit--square { width: 30px; height: 30px; border-radius: 7px; background: var(--fg); }
-.bit--pill   { width: 58px; height: 22px; border-radius: 99px; border: 3px solid var(--fg); }
-.bit--half   { width: 44px; height: 22px; border-radius: 44px 44px 0 0; background: var(--accent); }
-.bit--small  { width: 14px; height: 14px; border-radius: 50%; background: var(--fg); }
-
-/* The big FOCUS word. JS animates each letter. */
-.word {
+.birds {
   position: absolute;
-  left: 38%;
-  right: 4%;
-  top: 62%;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(5rem, 13vw, 14rem);
-  line-height: 0.8;
-  letter-spacing: -0.045em;
-  color: var(--fg);
-}
-
-.word span { display: inline-block; opacity: 0; will-change: transform, opacity; }
-
-/* ------------------------------------------------------------------
-   Hero (inside the stage, so it can be driven by scroll)
-   ------------------------------------------------------------------ */
-.hero {
-  position: absolute;
-  left: var(--gutter);
-  top: 50%;
-  transform: translateY(-50%);
-  display: grid;
-  gap: 18px;
-}
-
-.hero h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(3.2rem, 9vw, 8.5rem);
-  line-height: 0.9;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-}
-
-.lede { margin: 0; font-size: 18px; opacity: 0.85; }
-
-.scroll-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 28px;
-  transform: translateX(-50%);
-  margin: 0;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  font: 500 11px/1 var(--font-mono);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.hint-line {
-  width: 1px;
-  height: 40px;
-  background: linear-gradient(var(--fg), transparent);
-  transform-origin: top;
-  animation: hint 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-@keyframes hint {
-  0%   { transform: scaleY(0); opacity: 1; }
-  60%  { transform: scaleY(1); opacity: 1; }
-  100% { transform: scaleY(1); opacity: 0; }
-}
-
-/* ------------------------------------------------------------------
-   Finale
-   ------------------------------------------------------------------ */
-.finale {
-  position: absolute;
-  left: 66%;
-  top: 89%;
-  width: max-content;
-  transform: translate(-50%, -50%);
-  display: grid;
-  justify-items: center;
-  gap: 14px;
+  left: 0;
+  top: 0;
+  width: calc(var(--u) * 9);
+  height: auto;
   opacity: 0;
+  will-change: transform, opacity;
 }
 
-.finale-note { margin: 0; text-align: center; font: 500 12px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; }
-
-.cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 15px 26px;
-  border: 0;
-  border-radius: 99px;
-  background: var(--fg);
-  color: var(--bg);
-  font: 600 16px/1 var(--font-body);
-  cursor: pointer;
-  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.cta svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.cta:hover { transform: translateY(-2px) scale(1.03); }
-.cta:active { transform: scale(0.97); }
-
-/* ------------------------------------------------------------------
-   Chapter copy (scrolls over the stage)
-   ------------------------------------------------------------------ */
-.chapters {
+/* A layer fills the stage and can scale (the slow dolly in and out).
+   Its .track is the long strip of world the camera pans along. */
+.layer {
   position: absolute;
   inset: 0;
-  padding-top: 50vh;      /* lines each chapter's middle up with its quarter of the scroll */
-  pointer-events: none;
+  transform-origin: 50% 82%;
+  will-change: transform;
+}
+.track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 520vw;
+  will-change: transform;
+}
+.track > * { position: absolute; }
+
+/* ------------------------------------------------------------------
+   Far + middle layers
+   ------------------------------------------------------------------ */
+.hills { left: -10vw; top: 52vh; width: 260vw; height: 48vh; }
+.hill-far { fill: var(--hill-far); }
+.hill-near { fill: var(--hill-near); }
+
+.skyline { inset: 0; opacity: 0.55; }  /* distant, so hazy */
+.skyline span { position: absolute; bottom: 26vh; background: var(--city); border-radius: 2px 2px 0 0; }
+
+
+/* Trees: --h is the height in --u units */
+.tree {
+  top: calc(80vh - var(--u) * var(--h));
+  width: calc(var(--u) * var(--h) * 0.62);
+  height: calc(var(--u) * var(--h));
+}
+.tree::before { /* trunk */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: calc(var(--u) * 1.1);
+  height: 40%;
+  transform: translateX(-50%);
+  background: var(--hedge);
+  border-radius: 2px;
+}
+.tree::after { /* canopy */
+  content: "";
+  position: absolute;
+  inset: 0 0 22% 0;
+  border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: var(--tree);
 }
 
-.chapter {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  padding-inline: var(--gutter);
+/* ------------------------------------------------------------------
+   The set
+   ------------------------------------------------------------------ */
+.room, .outside, .terrace { top: 0; height: 100%; overflow: hidden; }
+.room > *, .outside > *, .terrace > * { position: absolute; }
+
+.char { display: block; height: auto; }
+
+/* A soft shadow where something touches the ground */
+.contact {
+  height: 3.2vh;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(60, 38, 30, 0.28), rgba(60, 38, 30, 0));
 }
+
+/* The cut edge of a wall, as in a section drawing */
+.cut { top: 0; bottom: 0; width: 1.4vw; background: var(--section); }
+.cut-right { right: 0; }
+.cut-left { left: 0; }
+
+/* Windows: the opening is transparent and its giant box-shadow paints
+   the wall around it, so the sky and far layers show through. */
+.window { box-shadow: 0 0 0 300vmax var(--wall); }
+.window i { position: absolute; background: var(--wall); }
+
+/* -- 01 Bedroom ---------------------------------------------------- */
+.room-wake { left: 0; width: 100vw; --wall: var(--wall-wake); }
+
+.window-arch { left: 12vw; top: 10vh; width: 24vw; height: 62vh; border-radius: 12vw 12vw 0 0; }
+.window-arch .bar-v { left: 50%; top: 0; bottom: 0; width: 0.5vw; transform: translateX(-50%); }
+.window-arch .bar-h { left: 0; right: 0; top: 46%; height: 0.5vw; }
+
+.room-wake .sill { left: 11vw; top: 72vh; width: 26vw; height: 1.6vh; background: #e7d5c4; border-radius: 3px; }
+
+/* Morning light spilling round the window onto the wall */
+.room-wake .glow {
+  left: 0;
+  top: 0;
+  width: 60vw;
+  height: 100%;
+  background: radial-gradient(ellipse 40% 50% at 40% 42%, rgba(255, 236, 210, 0.45), rgba(255, 236, 210, 0));
+  z-index: 1;
+  mix-blend-mode: soft-light;
+}
+
+.curtain {
+  left: 30vw;
+  top: 7vh;
+  width: 10vw;
+  height: 68vh;
+  border-radius: 0 0 2vw 2vw;
+  background: linear-gradient(90deg, rgba(255, 252, 246, 0.25), rgba(255, 252, 246, 0.7) 60%, rgba(255, 252, 246, 0.4));
+  transform-origin: 50% 0;
+  animation: sway 9s ease-in-out infinite alternate;
+}
+@keyframes sway { from { transform: skewX(-0.8deg); } to { transform: skewX(0.8deg); } }
+
+.room-wake .floor { left: 0; right: 0; top: 78vh; bottom: 0; background: var(--floor-wake); }
+
+/* Light falling from the window across the floor */
+.lightfall {
+  left: 4vw;
+  top: 72vh;
+  width: 56vw;
+  bottom: 0;
+  clip-path: polygon(14% 0, 57% 0, 100% 100%, 0 100%);
+  background: linear-gradient(rgba(255, 240, 212, 0.7), rgba(255, 240, 212, 0));
+  mix-blend-mode: screen;
+  filter: blur(10px);
+}
+
+.bed { left: 3vw; bottom: 3vh; width: 44vw; height: 5.5vh; border-radius: 1.6vh; background: var(--bed); }
+.char-wake { left: 4vw; bottom: 5.5vh; width: calc(var(--u) * 61); }
+
+.plant {
+  left: 41vw;
+  bottom: 13vh;
+  width: calc(var(--u) * 22);
+  height: auto;
+  transform-origin: 50% 100%;
+  animation: lean 7s ease-in-out infinite alternate;
+}
+@keyframes lean { from { transform: rotate(-0.6deg); } to { transform: rotate(0.6deg); } }
+
+/* -- 02 Outside ---------------------------------------------------- */
+.outside { left: 100vw; width: 200vw; }
+.grass { left: 0; right: 0; top: 78vh; bottom: 0; background: var(--grass); }
+.path {
+  left: 0;
+  right: 0;
+  top: 87vh;
+  bottom: 0;
+  background: var(--path);
+  box-shadow: 0 -1px 0 rgba(80, 60, 40, 0.08);
+}
+.bush {
+  top: 74vh;
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 7);
+  border-radius: 50% 50% 30% 30% / 70% 70% 30% 30%;
+  background: var(--tree);
+}
+.bush.small { width: calc(var(--u) * 9); height: calc(var(--u) * 5); top: 76vh; }
+
+.walker { left: 0; bottom: 4vh; will-change: transform; }
+.char-walk { width: calc(var(--u) * 26.5); }
+.walker .contact { left: -15%; bottom: -1.2vh; width: 130%; }
+
+/* -- 03 Studio ----------------------------------------------------- */
+.room-focus { left: 300vw; width: 100vw; --wall: var(--wall-focus); }
+
+.window-grid { left: 46vw; top: 10vh; width: 44vw; height: 48vh; border-radius: 4px; }
+.window-grid .bar-v { top: 0; bottom: 0; width: 0.45vw; }
+.window-grid .bar-v.a { left: 33.3%; }
+.window-grid .bar-v.b { left: 66.6%; }
+.window-grid .bar-h { left: 0; right: 0; top: 30%; height: 0.45vw; }
+
+.room-focus .floor { left: 0; right: 0; top: 86vh; bottom: 0; background: var(--floor-focus); }
+
+/* Afternoon light from the window, drawn across the wall and desk */
+.sunpatch {
+  left: 28vw;
+  top: 58vh;
+  width: 62vw;
+  height: 42vh;
+  clip-path: polygon(30% 0, 100% 0, 84% 100%, 0 100%);
+  background: linear-gradient(rgba(255, 246, 226, 0.5), rgba(255, 246, 226, 0));
+  mix-blend-mode: screen;
+  filter: blur(10px);
+}
+
+.desk-top { left: 32vw; right: 0; top: 70vh; height: 1.8vh; background: var(--desk); border-radius: 3px 0 0 3px; }
+.desk-front { left: 33vw; right: 0; top: 71.8vh; bottom: 10vh; background: linear-gradient(var(--desk-front), var(--desk)); }
+.char-focus { left: 44vw; bottom: 29.6vh; width: calc(var(--u) * 54); }
+
+/* -- 04 Terrace ---------------------------------------------------- */
+.terrace { left: 400vw; width: 120vw; }
+.parapet {
+  left: 0;
+  right: 0;
+  top: 70vh;
+  height: 12vh;
+  background: var(--parapet);
+  border-top: 1.2vh solid #efdccf;
+}
+.terrace-floor { left: 0; right: 0; top: 82vh; bottom: 0; background: var(--terrace); }
+.mug { left: 40vw; bottom: 30vh; width: calc(var(--u) * 9); height: auto; }
+.char-rest { left: 50vw; bottom: 4vh; width: calc(var(--u) * 46); }
+
+/* -- In front of the lens ------------------------------------------ */
+.front-leaf {
+  left: 442vw;
+  bottom: -16vh;
+  width: calc(var(--u) * 52);
+  height: auto;
+  filter: blur(7px);
+  transform-origin: 50% 100%;
+  animation: lean 8s ease-in-out infinite alternate;
+}
+
+/* ------------------------------------------------------------------
+   Grade + type
+   ------------------------------------------------------------------ */
+.grade { position: absolute; inset: 0; mix-blend-mode: multiply; pointer-events: none; }
+
+.type { position: absolute; inset: 0; pointer-events: none; color: var(--ink); }
 
 .copy {
-  max-width: 25rem;
+  position: absolute;
   display: grid;
-  gap: 14px;
-  opacity: 0;
-  pointer-events: auto;
+  gap: 12px;
+  max-width: 27rem;
   will-change: transform, opacity;
 }
 
 .copy h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2rem, 4vw, 3.3rem);
-  line-height: 1;
-  letter-spacing: -0.03em;
+  font-weight: 600;
+  font-size: clamp(2.2rem, 4.2vw, 4rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
-.copy p:not(.eyebrow) { margin: 0; opacity: 0.85; }
+.copy p { margin: 0; max-width: 24rem; }
+
+.eyebrow {
+  font: 500 12px/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.copy-wake  { left: 58vw; top: 34vh; }
+.copy-move  { left: 8vw;  top: 20vh; }
+.copy-focus { left: 7vw;  top: 24vh; max-width: 22rem; }
+.copy-reset { left: 7vw;  top: 22vh; }
+.copy-final { left: 7vw;  top: 28vh; gap: 22px; }
+.copy-final h2 { font-size: clamp(1.9rem, 3.2vw, 3rem); }
+
+.again {
+  justify-self: start;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  font: 500 16px/1.2 var(--font-body);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.again span { display: inline-block; transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+.again:hover span { transform: translateX(4px); }
+
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.hint-line {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(currentColor, transparent);
+  transform-origin: top;
+  animation: hint 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes hint {
+  0% { transform: scaleY(0); opacity: 1; }
+  60% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
 
 /* ------------------------------------------------------------------
-   Phones
+   Phones: same world, re-composed for a tall screen.
+   Type sits in the sky/upper wall; the set sits low.
    ------------------------------------------------------------------ */
 @media (max-width: 720px) {
-  .hud-nav .name { display: none; }
-  .brand { display: none; }
+  :root { --u: min(1vh, 1.55vw); }
+  .brand, .hud-nav .name { display: none; }
 
-  .hill-back  { top: 47%; }
-  .hill-front { top: 53%; }
-  .sun { width: 56vw; }
-  .portrait { height: 25vh; width: 19vh; }
+  .window-arch { left: 48vw; top: 38vh; width: 38vw; height: 34vh; border-radius: 19vw 19vw 0 0; }
+  .room-wake .sill { left: 47vw; width: 40vw; }
+  .curtain { left: 72vw; top: 36vh; width: 14vw; height: 40vh; }
+  .room-wake .glow { left: 30vw; width: 70vw; }
+  .lightfall { left: 30vw; width: 70vw; }
+  .bed { left: -4vw; width: 92vw; }
+  .char-wake { left: 0; }
+  .plant { left: 74vw; }
 
-  .word { left: 0; right: 0; top: 44%; font-size: 22vw; }
+  .window-grid { left: 30vw; top: 40vh; width: 64vw; height: 26vh; }
+  .desk-top { left: 0; }
+  .desk-front { left: 1vw; }
+  .sunpatch { left: 0; width: 100vw; }
+  .char-focus { left: 12vw; }
+  .room-focus .contact { left: 12vw !important; }
+  .front-leaf { left: 438vw; bottom: -12vh; width: calc(var(--u) * 40); }
+  .skyline { transform: scaleY(0.6); transform-origin: 0 74vh; }
 
-  .hero { top: 30%; }
-  .finale { left: 50%; top: 76%; }
+  .mug { left: 8vw; }
+  .char-rest { left: 26vw; }
+  .terrace .contact { left: 25vw !important; }
 
-  .chapters { padding-top: 78vh; }   /* the copy peaks lower on screen here */
-  .chapter { align-items: center; }
-  .copy {
-    max-width: none;
-    width: 100%;
-    padding: 20px 22px;
-    border-radius: 20px;
-    background: var(--card);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-  }
+  .copy { left: var(--gutter) !important; right: var(--gutter); max-width: none; top: 13vh !important; }
+  .copy h2 { font-size: clamp(2rem, 9vw, 2.6rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hint-line { animation: none; }
+  .stage, .cloud, .curtain, .plant, .front-leaf, .hint-line { animation: none; }
 }
