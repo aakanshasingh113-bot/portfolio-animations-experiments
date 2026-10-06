@@ -1,0 +1,356 @@
+/* Layout: a full-bleed sticky stage; chapter copy scrolls over it in a
+   left column on desktop, and as a bottom card on phones.
+
+   Colours below are only the starting values (pre-dawn). script.js
+   rewrites them every frame as the day progresses. */
+:root {
+  --bg: #141a33;        /* sky top, also used as the page background */
+  --fg: #f3eee6;        /* text and line-work */
+  --figure: #f3eee6;    /* the person */
+  --accent: #ff9a6b;    /* warm shapes */
+  --hill-b: #2a2947;
+  --hill-f: #1b1b33;
+  --card: rgba(20, 26, 51, 0.55);
+
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --gutter: clamp(16px, 6vw, 96px);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* ------------------------------------------------------------------
+   Header
+   ------------------------------------------------------------------ */
+.hud {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) var(--gutter) 18px;
+  pointer-events: none;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.hud-nav { display: flex; gap: 4px; pointer-events: auto; }
+
+.hud-nav button {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  color: var(--fg);
+  font: 500 12px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.hud-nav button:hover,
+.hud-nav button.is-active { opacity: 1; }
+.hud-nav .num { opacity: 0.6; }
+
+.hud-nav button:focus-visible,
+.cta:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 3px;
+}
+
+.hud-clock {
+  font: 500 14px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* Thin progress line along the very top */
+.hud-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--fg);
+  opacity: 0.55;
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+/* ------------------------------------------------------------------
+   Story track + sticky stage
+   ------------------------------------------------------------------ */
+.story {
+  position: relative;
+  height: 500vh;          /* 400vh of scrolling = 4 chapters × 100vh */
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Elements the script places with transform: translate(x, y) */
+.layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.sky, .stars { position: absolute; inset: 0; }
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--fg);
+}
+
+.hill {
+  position: absolute;
+  height: 70vh;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.hill-back  { left: -45vw; width: 150vw; top: 72%; background: var(--hill-b); }
+.hill-front { left: -5vw;  width: 150vw; top: 79%; background: var(--hill-f); }
+
+.sun {
+  width: min(38vw, 52vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.person {
+  height: 42vh;
+  width: 21vh;
+  fill: var(--figure);
+}
+
+/* Legs rotate from the hip */
+.leg { transform-box: fill-box; transform-origin: 50% 6%; }
+
+.bit { display: block; }
+.bit--dot    { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); }
+.bit--ring   { width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--fg); }
+.bit--square { width: 30px; height: 30px; border-radius: 7px; background: var(--fg); }
+.bit--pill   { width: 58px; height: 22px; border-radius: 99px; border: 3px solid var(--fg); }
+.bit--half   { width: 44px; height: 22px; border-radius: 44px 44px 0 0; background: var(--accent); }
+.bit--small  { width: 14px; height: 14px; border-radius: 50%; background: var(--fg); }
+
+/* The big FOCUS word. JS animates each letter. */
+.word {
+  position: absolute;
+  left: 38%;
+  right: 4%;
+  top: 62%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(5rem, 13vw, 14rem);
+  line-height: 0.8;
+  letter-spacing: -0.045em;
+  color: var(--fg);
+}
+
+.word span { display: inline-block; opacity: 0; will-change: transform, opacity; }
+
+/* ------------------------------------------------------------------
+   Hero (inside the stage, so it can be driven by scroll)
+   ------------------------------------------------------------------ */
+.hero {
+  position: absolute;
+  left: var(--gutter);
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 18px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(3.2rem, 9vw, 8.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.lede { margin: 0; font-size: 18px; opacity: 0.85; }
+
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hint-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(var(--fg), transparent);
+  transform-origin: top;
+  animation: hint 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes hint {
+  0%   { transform: scaleY(0); opacity: 1; }
+  60%  { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+
+/* ------------------------------------------------------------------
+   Finale
+   ------------------------------------------------------------------ */
+.finale {
+  position: absolute;
+  left: 66%;
+  top: 89%;
+  width: max-content;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  opacity: 0;
+}
+
+.finale-note { margin: 0; text-align: center; font: 500 12px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; }
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 26px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--fg);
+  color: var(--bg);
+  font: 600 16px/1 var(--font-body);
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cta svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.cta:hover { transform: translateY(-2px) scale(1.03); }
+.cta:active { transform: scale(0.97); }
+
+/* ------------------------------------------------------------------
+   Chapter copy (scrolls over the stage)
+   ------------------------------------------------------------------ */
+.chapters {
+  position: absolute;
+  inset: 0;
+  padding-top: 50vh;      /* lines each chapter's middle up with its quarter of the scroll */
+  pointer-events: none;
+}
+
+.chapter {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--gutter);
+}
+
+.copy {
+  max-width: 25rem;
+  display: grid;
+  gap: 14px;
+  opacity: 0;
+  pointer-events: auto;
+  will-change: transform, opacity;
+}
+
+.copy h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 4vw, 3.3rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.copy p:not(.eyebrow) { margin: 0; opacity: 0.85; }
+
+/* ------------------------------------------------------------------
+   Phones
+   ------------------------------------------------------------------ */
+@media (max-width: 720px) {
+  .hud-nav .name { display: none; }
+  .brand { display: none; }
+
+  .hill-back  { top: 47%; }
+  .hill-front { top: 53%; }
+  .sun { width: 56vw; }
+  .person { height: 26vh; width: 13vh; }
+
+  .word { left: 0; right: 0; top: 44%; font-size: 22vw; }
+
+  .hero { top: 30%; }
+  .finale { left: 50%; top: 76%; }
+
+  .chapters { padding-top: 78vh; }   /* the copy peaks lower on screen here */
+  .chapter { align-items: center; }
+  .copy {
+    max-width: none;
+    width: 100%;
+    padding: 20px 22px;
+    border-radius: 20px;
+    background: var(--card);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-line { animation: none; }
+}
