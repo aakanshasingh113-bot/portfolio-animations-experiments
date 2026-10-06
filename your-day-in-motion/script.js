@@ -23,9 +23,8 @@ const starsEl = $("#stars");
 const hillBack = $("#hillBack");
 const hillFront = $("#hillFront");
 const sun = $("#sun");
-const person = $("#person");
-const legL = $("#legL");
-const legR = $("#legR");
+const portrait = $("#portrait");
+const portraitImg = $("#portraitImg");
 const word = $("#word");
 const letters = [...word.children];
 const bits = [...document.querySelectorAll(".bit")];
@@ -108,10 +107,10 @@ function sample(tr, p) {
    ------------------------------------------------------------------ */
 const COLORS = track([
   // pre-dawn
-  { at: 0.00, top: "#141a33", bottom: "#3d3456", fg: "#f3eee6", figure: "#f3eee6",
+  { at: 0.00, top: "#141a33", bottom: "#3d3456", fg: "#f3eee6", imgB: 0.62, imgS: 0.7, imgW: 0.15,
     hillB: "#2a2947", hillF: "#1b1b33", sunA: "#ffc27a", sunB: "#ff7a59", glow: 0.35, accent: "#ff9a6b" },
   // WAKE: morning
-  { at: 0.10, top: "#a9c1dd", bottom: "#f8dcc4", fg: "#1b1f2e", figure: "#1b1f2e",
+  { at: 0.10, top: "#a9c1dd", bottom: "#f8dcc4", fg: "#1b1f2e", imgB: 1, imgS: 1, imgW: 0,
     hillB: "#c7a79d", hillF: "#8f7a86", sunA: "#ffe39a", sunB: "#ff9d4d", glow: 0.6, accent: "#f08a4b" },
   { at: 0.30 },
   // MOVE: bright midday
@@ -119,11 +118,11 @@ const COLORS = track([
     sunA: "#fff1b0", sunB: "#ffc24d", glow: 0.5, accent: "#e7883f" },
   { at: 0.50 },
   // FOCUS: deep, quiet afternoon
-  { at: 0.60, top: "#0d1a21", bottom: "#1c3b40", fg: "#e8f0ec", figure: "#e8f0ec",
+  { at: 0.60, top: "#0d1a21", bottom: "#1c3b40", fg: "#e8f0ec", imgB: 0.82, imgS: 0.75, imgW: 0,
     hillB: "#173033", hillF: "#0f2326", sunA: "#f3d9a8", sunB: "#c98e5c", glow: 0.25, accent: "#e0a46a" },
   { at: 0.76 },
   // RESET: dusk
-  { at: 0.88, top: "#2a1d3d", bottom: "#ec8a6a", fg: "#fff4ec", figure: "#2a1d3d",
+  { at: 0.88, top: "#2a1d3d", bottom: "#ec8a6a", fg: "#fff4ec", imgB: 0.9, imgS: 0.95, imgW: 0.35,
     hillB: "#5b3654", hillF: "#3a2240", sunA: "#ffb070", sunB: "#ea5a6e", glow: 0.55, accent: "#ffb27a" },
 ]);
 
@@ -161,17 +160,17 @@ function buildTracks() {
     { at: 0.94, x: 0.66, y: 0.45, s: 1.05 },   // RESET: back to the centre
   ]));
 
-  tracks.person = track(fitFrames([
-    { at: 0.00, x: -0.25, y: 0.56, s: 1 },
-    { at: 0.28 },
-    { at: 0.44, x: 0.55, y: 0.56, s: 1 },      // MOVE: walks in from the left
+  tracks.portrait = track(fitFrames([
+    { at: 0.00, x: -0.25, y: 0.53, s: 1, r: -8 },
+    { at: 0.22 },
+    { at: 0.34, x: 0.55, y: 0.53, s: 1, r: 0 }, // MOVE: slides in from the left (before the text arrives)
     { at: 0.52 },
-    { at: 0.66, x: 0.67, y: 0.42, s: 0.55 },   // FOCUS: scales down, stands on the word
+    { at: 0.66, x: 0.67, y: 0.425, s: 0.5 },   // FOCUS: scales down, sits on the word
     { at: 0.78 },
-    { at: 0.94, x: 0.66, y: 0.56, s: 0.8 },    // RESET: in front of the sun
+    { at: 0.94, x: 0.66, y: 0.5, s: 0.82 },    // RESET: in front of the sun
   ]));
 
-  // Small shapes: scattered → around the person → a tidy row → a ring
+  // Small shapes: scattered → around the illustration → a tidy row → a ring
   const rest = [[0.43, 0.31], [0.63, 0.29], [0.73, 0.55], [0.41, 0.68], [0.70, 0.80], [0.53, 0.87]];
   const sunEnd = tracks.sun[tracks.sun.length - 1];
   const ringR = (sizes.sun.w * 1.05) / 2 + Math.max(34, Math.min(W, H) * 0.06);
@@ -207,11 +206,9 @@ function measure() {
   W = window.innerWidth;
   H = window.innerHeight;
   narrow = W <= 720;
-  // SVGs don't have offsetWidth, so the person's size comes from its CSS
-  const ps = getComputedStyle(person);
   sizes = {
     sun: { w: sun.offsetWidth, h: sun.offsetHeight },
-    person: { w: parseFloat(ps.width), h: parseFloat(ps.height) },
+    portrait: { w: portrait.offsetWidth, h: portrait.offsetHeight },
     bits: bits.map((b) => ({ w: b.offsetWidth, h: b.offsetHeight })),
   };
   buildTracks();
@@ -287,7 +284,6 @@ function render(p) {
   const c = sample(COLORS, p);
   root.style.setProperty("--bg", rgba(c.top));
   root.style.setProperty("--fg", rgba(c.fg));
-  root.style.setProperty("--figure", rgba(c.figure));
   root.style.setProperty("--accent", rgba(c.accent));
   root.style.setProperty("--hill-b", rgba(c.hillB));
   root.style.setProperty("--hill-f", rgba(c.hillF));
@@ -307,12 +303,15 @@ function render(p) {
   // 3. The sun
   place(sun, sizes.sun, sample(tracks.sun, p), 9);
 
-  // 4. The person, with a little walk cycle while entering in MOVE
-  const walk = range(p, 0.28, 0.44);
-  const stride = Math.sin(walk * Math.PI * 7) * Math.sin(walk * Math.PI); // 0 at both ends
-  legL.style.transform = `rotate(${stride * 22}deg)`;
-  legR.style.transform = `rotate(${-stride * 22}deg)`;
-  place(person, sizes.person, sample(tracks.person, p), 16, -Math.abs(stride) * 6);
+  // 4. The illustration. Its colours are graded to the time of day,
+  //    and the image drifts inside its frame (the frame moves one way,
+  //    the picture slightly the other) for a sense of depth.
+  place(portrait, sizes.portrait, sample(tracks.portrait, p), 16);
+  const drift = range(p, 0.28, 0.94) - 0.5;   // -0.5 … 0.5 while on screen
+  portraitImg.style.transform =
+    `translate3d(${-pointer.x * 8}px, ${drift * -sizes.portrait.h * 0.1 - pointer.y * 6}px, 0)`;
+  portraitImg.style.filter =
+    `brightness(${c.imgB}) saturate(${c.imgS}) sepia(${c.imgW})`;
 
   // 5. Small shapes (closest layer = most pointer movement)
   bits.forEach((el, i) => place(el, sizes.bits[i], sample(tracks.bits[i], p), 26));
@@ -347,7 +346,7 @@ function render(p) {
   sections.forEach((section) => {
     const r = section.getBoundingClientRect();
     const d = (r.top + r.height / 2 - focal * H) / (H * 0.5);  // 0 = on the focal line
-    const visible = 1 - ease.inOut(range(Math.abs(d), 0.25, 0.9));
+    const visible = 1 - ease.inOut(range(Math.abs(d), 0.2, 0.6));
     const copy = section.firstElementChild;
     copy.style.opacity = visible;
     copy.style.transform = `translate3d(0, ${d * H * 0.08}px, 0)`;

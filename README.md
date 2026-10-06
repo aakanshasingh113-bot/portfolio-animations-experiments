@@ -19,6 +19,7 @@ A scroll-driven story in four chapters: Wake, Move, Focus and Reset. The visuals
 
 **Files** (in `your-day-in-motion/`)
 - `index.html`: the stage layers and the four chapters of text
+- `images/morning-stretch.jpg`: the main illustration
 - `style.css`: layout, type and the starting colours
 - `script.js`: turns scroll position into progress (0 → 1) and moves everything along keyframe "tracks"
 

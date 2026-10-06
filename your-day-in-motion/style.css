@@ -6,7 +6,6 @@
 :root {
   --bg: #141a33;        /* sky top, also used as the page background */
   --fg: #f3eee6;        /* text and line-work */
-  --figure: #f3eee6;    /* the person */
   --accent: #ff9a6b;    /* warm shapes */
   --hill-b: #2a2947;
   --hill-f: #1b1b33;
@@ -160,14 +159,28 @@ body {
   border-radius: 50%;
 }
 
-.person {
-  height: 42vh;
-  width: 21vh;
-  fill: var(--figure);
+.portrait {
+  margin: 0;
+  width: 30vh;
+  height: 40vh;
+  overflow: hidden;
+  /* An arch: fully rounded top, softly rounded bottom (echoes the sun) */
+  border-radius: 999px 999px 28px 28px;
+  box-shadow: 0 30px 60px -20px rgba(10, 8, 20, 0.45);
 }
 
-/* Legs rotate from the hip */
-.leg { transform-box: fill-box; transform-origin: 50% 6%; }
+/* The image is a little larger than its frame so it can drift inside
+   it: that's the parallax inside the frame. */
+.portrait img {
+  position: absolute;
+  left: -8%;
+  top: -8%;
+  width: 116%;
+  height: 116%;
+  object-fit: cover;
+  object-position: 42% 50%;
+  will-change: transform, filter;
+}
 
 .bit { display: block; }
 .bit--dot    { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); }
@@ -331,7 +344,7 @@ body {
   .hill-back  { top: 47%; }
   .hill-front { top: 53%; }
   .sun { width: 56vw; }
-  .person { height: 26vh; width: 13vh; }
+  .portrait { height: 25vh; width: 19vh; }
 
   .word { left: 0; right: 0; top: 44%; font-size: 22vw; }
 
