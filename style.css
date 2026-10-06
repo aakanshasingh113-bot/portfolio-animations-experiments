@@ -1,0 +1,231 @@
+/* ------------------------------------------------------------------
+   Design tokens — tweak these to experiment
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #efeee9;
+  --ink: #111111;          /* button colour */
+  --ink-done: #0f3d2a;     /* button colour once "Done" */
+  --text: #ffffff;
+  --muted: #8a8880;
+
+  --pill-w: 280px;         /* resting pill size */
+  --pill-h: 88px;
+  --circle: 200px;         /* size of the expanded circle */
+
+  /* Easing curves. Play with these on https://cubic-bezier.com */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);     /* fast start, soft landing */
+  --ease-morph: cubic-bezier(0.76, 0, 0.24, 1);   /* slow-fast-slow, for the shape change */
+
+  --morph-time: 0.8s;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Centre everything in the viewport */
+.stage {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+/* ------------------------------------------------------------------
+   The button (an invisible container — the visuals live in the layers)
+   ------------------------------------------------------------------ */
+.btn {
+  position: relative;
+  width: var(--pill-w);
+  height: var(--pill-h);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  border-radius: 999px;
+  -webkit-tap-highlight-color: transparent;
+
+  /* Pill -> circle morph. Width and height animate at slightly different
+     speeds so the shape "breathes" rather than changing mechanically. */
+  transition:
+    width var(--morph-time) var(--ease-morph),
+    height calc(var(--morph-time) * 0.9) var(--ease-morph);
+}
+
+.btn.is-done {
+  width: var(--circle);
+  height: var(--circle);
+}
+
+.btn:focus { outline: none; }
+.btn:focus-visible .btn-shape {
+  outline: 2px solid var(--ink);
+  outline-offset: 6px;
+}
+
+/* ------------------------------------------------------------------
+   Layer 1: the shape. JavaScript sets its `transform` every frame
+   (the stretch). border-radius: 999px means it's always fully rounded —
+   a pill when wide, a perfect circle when width = height.
+   ------------------------------------------------------------------ */
+.btn-shape {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  overflow: hidden;
+
+  /* --lift (0 → 1) is set by JS based on how close the cursor is */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 calc(8px + 14px * var(--lift, 0)) calc(24px + 24px * var(--lift, 0))
+      rgba(0, 0, 0, calc(0.10 + 0.12 * var(--lift, 0)));
+
+  transition: background-color 0.6s var(--ease-out);
+  will-change: transform;
+}
+
+.btn.is-done .btn-shape { background: var(--ink-done); }
+
+/* A soft light that follows the cursor inside the button */
+.btn-shape::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0) 55%
+  );
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.btn.is-hover .btn-shape::after { opacity: 1; }
+
+/* ------------------------------------------------------------------
+   Layers 2 & 3: content. Both fill the button and centre their content.
+   JS moves them with the `translate` property (the subtle text drift);
+   CSS animates `transform`, `opacity` and `filter` for the state change.
+   Because those are separate properties, they never fight each other.
+   ------------------------------------------------------------------ */
+.btn-label,
+.btn-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* "Get started" — visible by default.
+   When coming BACK from Done, it waits (delay) for the shape to shrink first. */
+.btn-label {
+  white-space: nowrap;
+  transition:
+    opacity 0.45s var(--ease-out) 0.3s,
+    transform 0.6s var(--ease-out) 0.3s,
+    filter 0.45s var(--ease-out) 0.3s;
+}
+
+.btn.is-done .btn-label {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  filter: blur(4px);
+  /* Leaving: go immediately, and quickly */
+  transition-duration: 0.25s, 0.35s, 0.25s;
+  transition-delay: 0s;
+}
+
+/* Checkmark + "Done" */
+.btn-done {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.check {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+
+/* The "drawing" trick: the dash is as long as the whole path, and we
+   offset it by that same length so it's hidden. Animating the offset
+   to 0 makes the line appear to draw itself. */
+.check path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  transition: stroke-dashoffset 0.25s var(--ease-out);
+}
+
+.done-text {
+  opacity: 0;
+  transform: translateY(6px);
+  filter: blur(3px);
+  transition:
+    opacity 0.2s var(--ease-out),
+    transform 0.25s var(--ease-out),
+    filter 0.2s var(--ease-out);
+}
+
+/* Entering: wait until the circle has mostly formed, then draw */
+.btn.is-done .check path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.55s var(--ease-out) 0.45s;
+}
+
+.btn.is-done .done-text {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+  transition:
+    opacity 0.5s var(--ease-out) 0.6s,
+    transform 0.6s var(--ease-out) 0.6s,
+    filter 0.5s var(--ease-out) 0.6s;
+}
+
+/* ------------------------------------------------------------------
+   Supporting bits
+   ------------------------------------------------------------------ */
+.hint {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 32px;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Respect people who've asked their OS for less motion */
+@media (prefers-reduced-motion: reduce) {
+  :root { --morph-time: 0.3s; }
+  .btn-label, .btn-done, .done-text, .check path { transition-duration: 0.2s !important; }
+}
