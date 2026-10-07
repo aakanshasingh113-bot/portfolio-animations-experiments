@@ -158,10 +158,11 @@ body {
   left: 0;
   top: 0;
   width: calc(var(--u) * 9);
-  height: auto;
   opacity: 0;
   will-change: transform, opacity;
 }
+.birds img { display: block; width: 100%; height: auto; transform-origin: 50% 60%; animation: flap 0.9s ease-in-out infinite alternate; }
+@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(0.72); } }
 
 /* A layer fills the stage and can scale (the slow dolly in and out).
    Its .track is the long strip of world the camera pans along. */
@@ -322,7 +323,12 @@ body {
 .bush.small { width: calc(var(--u) * 9); height: calc(var(--u) * 5); top: 76vh; }
 
 .walker { left: 0; bottom: 4vh; will-change: transform; }
-.char-walk { width: calc(var(--u) * 26.5); }
+.rig { position: relative; width: calc(var(--u) * 26.5); aspect-ratio: 220 / 463; }
+.rig .part { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
+/* Pivot points, measured on the drawing (hip joints at y = 285 of 463) */
+.leg-back  { transform-origin: 47.7% 61.6%; }
+.leg-front { transform-origin: 63.6% 61.6%; }
+.torso     { transform-origin: 55% 62%; }
 .walker .contact { left: -15%; bottom: -1.2vh; width: 130%; }
 
 /* -- 03 Studio ----------------------------------------------------- */
@@ -463,6 +469,147 @@ body {
    Phones: same world, re-composed for a tall screen.
    Type sits in the sky/upper wall; the set sits low.
    ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------
+   Light, atmosphere and life
+   ------------------------------------------------------------------ */
+
+/* Shadows lean away from the sun. --cast-x / --cast-s are set from the
+   sun's position every frame, so shadows lengthen at dawn and dusk. */
+.contact.cast {
+  transform: translateX(var(--cast-x, 0px)) scaleX(var(--cast-s, 1));
+  opacity: var(--cast-a, 1);
+}
+
+/* Stars come out at the very end */
+.stars { position: absolute; inset: 0 0 45% 0; opacity: 0; }
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff8ee;
+  animation: twinkle 3.2s ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: 0.25; } to { opacity: 1; } }
+
+/* A warm bloom along the horizon around the setting sun */
+.horizon { position: absolute; inset: 40% 0 0 0; opacity: 0; mix-blend-mode: screen; }
+
+/* Aerial perspective: distant hills and city sink into the sky colour */
+.haze { position: absolute; inset: 0; pointer-events: none; }
+
+/* Bedroom: shafts of morning light, and dust drifting through them */
+.rays {
+  left: 10vw;
+  top: 8vh;
+  width: 46vw;
+  height: 86vh;
+  transform-origin: 30% 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.rays i {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(rgba(255, 238, 205, 0.55), rgba(255, 238, 205, 0) 92%);
+  filter: blur(14px);
+  transform: skewX(-24deg);
+  transform-origin: 0 0;
+  animation: ray 11s ease-in-out infinite alternate;
+}
+.rays i:nth-child(1) { left: 6%;  width: 12%; }
+.rays i:nth-child(2) { left: 24%; width: 7%;  animation-duration: 13s; animation-delay: -4s; }
+.rays i:nth-child(3) { left: 36%; width: 14%; animation-duration: 9s;  animation-delay: -2s; }
+@keyframes ray { from { opacity: 0.55; } to { opacity: 1; } }
+
+.motes { left: 14vw; top: 18vh; width: 34vw; height: 60vh; pointer-events: none; }
+.mote {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 248, 232, 0.9);
+  animation: mote linear infinite;
+}
+@keyframes mote {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  15%  { opacity: 0.9; }
+  85%  { opacity: 0.9; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+
+/* She breathes */
+.char-wake { transform-origin: 50% 100%; animation: breathe 5.5s ease-in-out infinite alternate; }
+@keyframes breathe { from { transform: scale(1, 1); } to { transform: scale(1.004, 1.008); } }
+
+/* Studio: soft light from the laptop on her face, steam from the mug */
+.screen-glow {
+  left: calc(44vw + var(--u) * 26);
+  bottom: calc(29.6vh + var(--u) * 14);
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 20);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(214, 228, 255, 0.35), rgba(214, 228, 255, 0));
+  mix-blend-mode: screen;
+  animation: glow 6s ease-in-out infinite alternate;
+}
+@keyframes glow { from { opacity: 0.7; } to { opacity: 1; } }
+
+.steam { width: calc(var(--u) * 3); height: calc(var(--u) * 9); pointer-events: none; }
+.steam i {
+  position: absolute;
+  bottom: 0;
+  left: 30%;
+  width: 40%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.55) 60%, rgba(255, 255, 255, 0));
+  filter: blur(3px);
+  transform-origin: 50% 100%;
+  animation: steam 4.2s ease-in-out infinite;
+}
+.steam i:nth-child(2) { left: 55%; animation-delay: -2.1s; animation-duration: 5s; }
+@keyframes steam {
+  0%   { transform: translateY(20%) scaleY(0.6) skewX(0deg); opacity: 0; }
+  35%  { opacity: 0.8; }
+  100% { transform: translateY(-45%) scaleY(1.1) skewX(10deg); opacity: 0; }
+}
+.steam-desk { left: calc(44vw + var(--u) * 13.5); bottom: calc(29.6vh + var(--u) * 6.4); }
+.steam-terrace { left: calc(40vw + var(--u) * 3.6); bottom: calc(30vh + var(--u) * 10.5); }
+
+/* Light from the studio window, pane by pane. It slides as the sun moves. */
+.sunpatch {
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 30%, transparent 30% 33.33%);
+  mask-image: repeating-linear-gradient(90deg, #000 0 30%, transparent 30% 33.33%);
+  will-change: transform;
+}
+
+/* Reset: swaying gently to whatever is in her headphones */
+.char-rest { transform-origin: 50% 100%; animation: music 3.6s ease-in-out infinite alternate; }
+@keyframes music { from { transform: rotate(-0.7deg); } to { transform: rotate(0.7deg); } }
+
+/* Camera / lens */
+.exposure { position: absolute; inset: 0; background: #fffaf0; mix-blend-mode: soft-light; opacity: 0; pointer-events: none; }
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 75% 70% at 50% 52%, rgba(30, 18, 26, 0) 55%, rgba(30, 18, 26, 0.32));
+  pointer-events: none;
+}
+.grain {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  animation: grain 0.9s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-3%, 2%); } 40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); } 80% { transform: translate(3%, 3%); } 100% { transform: translate(0, 0); }
+}
+
+/* Type: each word sits in a mask and slides up into view */
+.copy h2 .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.copy h2 .w > span { display: inline-block; will-change: transform; }
+
 @media (max-width: 720px) {
   :root { --u: min(1vh, 1.55vw); }
   .brand, .hud-nav .name { display: none; }
@@ -489,10 +636,17 @@ body {
   .char-rest { left: 26vw; }
   .terrace .contact { left: 25vw !important; }
 
+  .rays { left: 40vw; top: 36vh; width: 60vw; height: 64vh; }
+  .motes { left: 48vw; top: 40vh; width: 40vw; height: 40vh; }
+  .screen-glow { left: calc(12vw + var(--u) * 26); }
+  .steam-desk { left: calc(12vw + var(--u) * 13.5); }
+  .steam-terrace { left: calc(8vw + var(--u) * 3.6); }
   .copy { left: var(--gutter) !important; right: var(--gutter); max-width: none; top: 13vh !important; }
   .copy h2 { font-size: clamp(2rem, 9vw, 2.6rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage, .cloud, .curtain, .plant, .front-leaf, .hint-line { animation: none; }
+  .stage, .cloud, .curtain, .plant, .front-leaf, .hint-line, .birds img, .star, .rays i, .mote,
+  .char-wake, .screen-glow, .steam i, .char-rest, .grain { animation: none; }
+  .mote, .steam { display: none; }
 }

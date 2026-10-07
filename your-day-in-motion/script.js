@@ -7,7 +7,8 @@
      • the camera   – how far along the world we are looking
      • the dolly    – a very slow push in / pull out
      • the time     – sky, light, colours and the sun's position
-     • the walker   – she walks through the park in MOVE
+     • the walker   – a cut-out rig whose steps are driven by distance
+     • the light    – shadows, light shafts, haze and focus follow the sun
      • the birds    – they cross the evening sky in RESET
      • the type     – each block fades in where it lives in the world
 
@@ -34,6 +35,18 @@ const grade = $("#grade");
 const lightfall = $("#lightfall");
 const sunpatch = $("#sunpatch");
 const walker = $("#walker");
+const rig = $("#rig");
+const legBack = $("#legBack");
+const legFront = $("#legFront");
+const torso = $("#torso");
+const farLayer = $("#farLayer");
+const midLayer = $("#midLayer");
+const haze = $("#haze");
+const horizon = $("#horizon");
+const starsEl = $("#stars");
+const rays = $("#rays");
+const exposure = $("#exposure");
+const vignette = $("#vignette");
 const hint = $("#hint");
 const clock = $("#clock");
 const bar = $("#bar");
@@ -58,6 +71,7 @@ const range = (p, a, b) => clamp((p - a) / (b - a)); // 0 before a, 1 after b
 const ease = {
   inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
   out: (t) => 1 - Math.pow(1 - t, 3),
+  expo: (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t)),   // fast start, very long settle
 };
 
 const hexToRgb = (h) => {
@@ -129,6 +143,7 @@ function sample(tr, p) {
   return out;
 }
 
+
 /* ------------------------------------------------------------------
    1. CAMERA: where we are looking, in vw along the world.
       bedroom 0 · park 100–300 · studio 300 · terrace 400
@@ -137,8 +152,8 @@ const camera = curve([
   [0.00, 0],
   [0.12, 0],     // WAKE: hold on the bedroom
   [0.26, 105],   // step outside
-  [0.46, 195],   // MOVE: track alongside her through the park
-  [0.58, 300],   // arrive in the studio
+  [0.46, 165],   // MOVE: a tracking shot, moving at exactly her walking speed
+  [0.58, 300],   // the camera moves on into the studio
   [0.72, 302],   // FOCUS: almost perfectly still
   [0.82, 405],   // out onto the terrace
   [1.00, 410],   // RESET: drift to a stop
@@ -150,11 +165,25 @@ const dolly = curve([
   [0.00, 1.035], [0.12, 1], [0.58, 1], [0.72, 1.03], [0.82, 1.012], [1.00, 1],
 ]);
 
-// The walker's position in the world (vw). She starts walking just as
-// the park comes into view, and keeps going as the camera moves on.
+// The walker's position in the world (vw). She sets off as the park comes
+// into view, then keeps the same pace as the tracking camera.
 const walk = curve([
-  [0.00, 118], [0.14, 118], [0.26, 142], [0.46, 240], [0.60, 272], [1.00, 272],
+  [0.00, 118], [0.14, 118], [0.26, 146], [0.46, 206], [0.60, 238], [1.00, 238],
 ]);
+
+// During MOVE the camera locks onto her (a tracking shot), drifting very
+// slightly so she gains a little ground as she walks.
+const trackOffset = curve([[0.26, 40], [0.46, 44]]);
+function cameraAt(p) {
+  const follow = smooth01(range(p, 0.2, 0.27)) * (1 - smooth01(range(p, 0.45, 0.52)));
+  return lerp(camera(p), walk(p) - trackOffset(p), follow);
+}
+
+// Lens and light over the day
+const exposureCurve = curve([[0, 0], [0.12, 0], [0.18, 0.5], [0.27, 0], [1, 0]]);          // eyes adjusting to daylight
+const vignetteCurve = curve([[0, 0.45], [0.12, 0.3], [0.3, 0.2], [0.5, 0.2], [0.62, 0.6], [0.72, 0.8], [0.8, 0.4], [0.9, 0.55], [1, 0.85]]);
+const farBlur = curve([[0, 0.6], [0.5, 0.6], [0.6, 1.8], [0.72, 2.8], [0.8, 0.8], [1, 0.8]]);  // rack focus in FOCUS
+const midBlur = curve([[0, 0.2], [0.5, 0.2], [0.62, 1], [0.72, 1.5], [0.8, 0.3], [1, 0.3]]);
 
 /* ------------------------------------------------------------------
    2. TIME OF DAY
@@ -185,9 +214,64 @@ const COLORS = track([
 ]);
 
 /* ------------------------------------------------------------------
+   3. THE WALK RIG
+
+   One drawing, cut into torso + two legs. The legs pivot at the hip
+   and scissor open and closed. The secret to a natural walk:
+
+   • Steps are driven by DISTANCE, not time. Every 49.5 drawing-pixels
+     she moves forward = one step. So the foot that's on the ground
+     moves backward relative to her body at exactly the speed the
+     ground moves past: it stays planted, no sliding.
+   • Whichever foot is planted decides how high the body is. When a
+     leg swings toward vertical it "gets longer", which lifts the hips.
+     That gives the natural rise and fall of a walk for free.
+   • The other foot lifts a little as it swings through.
+   ------------------------------------------------------------------ */
+const RIG = {
+  width: 220,                      // the drawing's size in pixels
+  pivotBack: [105, 285], footBack: [30, 452],
+  pivotFront: [140, 285], footFront: [185, 456],
+  ground: 456,
+  back: [6, -12],                  // back leg rotation: wide stride → legs passing (degrees)
+  front: [-5, 12],                 // front leg rotation: wide stride → legs passing
+  step: 49.5,                      // how far she travels per step, in drawing pixels
+  clearance: 7,                    // how high the swinging foot lifts
+};
+
+function footY(pivot, foot, deg) {
+  const r = (deg * Math.PI) / 180;
+  const dx = foot[0] - pivot[0], dy = foot[1] - pivot[1];
+  return pivot[1] + dx * Math.sin(r) + dy * Math.cos(r);
+}
+const smooth01 = (x) => { const t = clamp(x); return t * t * (3 - 2 * t); };
+
+function walkPose(distance) {
+  const u = ((distance / RIG.step) % 2 + 2) % 2;   // 0–1: front foot planted, 1–2: back foot planted
+  const c = u < 1 ? u : 2 - u;                       // 0 = widest stride, 1 = legs passing
+  const angB = lerp(RIG.back[0], RIG.back[1], c);
+  const angF = lerp(RIG.front[0], RIG.front[1], c);
+  const yB = footY(RIG.pivotBack, RIG.footBack, angB);
+  const yF = footY(RIG.pivotFront, RIG.footFront, angF);
+
+  // How much the front foot carries the weight (blended around each hand-over)
+  const wF = u < 1 ? 0.5 + 0.5 * smooth01(Math.min(u, 1 - u) / 0.12)
+                   : 0.5 - 0.5 * smooth01(Math.min(u - 1, 2 - u) / 0.12);
+  const swing = Math.sin(Math.PI * c) * RIG.clearance;
+  const liftB = wF * (Math.max(0, yB - yF + 2) + swing);
+  const liftF = (1 - wF) * (Math.max(0, yF - yB + 2) + swing);
+  const supportY = wF * (yF - liftF) + (1 - wF) * (yB - liftB);
+
+  return { angB, angF, liftB, liftF, drop: RIG.ground - supportY, c };
+}
+
+// A small spring: she leans into the walk and straightens up when you stop
+const lean = { value: 0, velocity: 0, target: 0 };
+
+/* ------------------------------------------------------------------
    Layout (recalculated on resize)
    ------------------------------------------------------------------ */
-let W = 0, H = 0, sunSize = 0, birdsW = 0;
+let W = 0, H = 0, sunSize = 0, birdsW = 0, rigScale = 1;
 let sunX, sunY, birdX, birdY;
 
 function measure() {
@@ -196,6 +280,7 @@ function measure() {
   const narrow = W <= 720;
   sunSize = sun.offsetWidth;
   birdsW = birds.offsetWidth;
+  rigScale = rig.offsetWidth / RIG.width;
 
   // The sun's path across the screen, in vw / vh. It's timed so you see it
   // through the bedroom window at dawn and the studio window in the
@@ -212,37 +297,109 @@ function measure() {
 }
 
 /* ------------------------------------------------------------------
-   Type: each block belongs somewhere in the world (`at`, in camera vw)
-   and moves with it. `depth` < 1 lets MOVE's text drift slowly with the
-   landscape instead of rushing past with the path.
+   Generated details: stars, dust, film grain, word masks
+   (made once, from a fixed seed so nothing jumps between visits)
+   ------------------------------------------------------------------ */
+let seed = 11;
+const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+for (let i = 0; i < 46; i++) {
+  const s = document.createElement("span");
+  const size = 1 + rand() * 1.6;
+  s.className = "star";
+  s.style.cssText = `left:${rand() * 100}%;top:${rand() * 100}%;width:${size}px;height:${size}px;` +
+    `animation-delay:${-rand() * 4}s;animation-duration:${2.4 + rand() * 3}s`;
+  starsEl.appendChild(s);
+}
+
+const motes = $("#motes");
+for (let i = 0; i < 16; i++) {
+  const m = document.createElement("span");
+  const size = 1.5 + rand() * 2.5;
+  m.className = "mote";
+  m.style.cssText = `left:${rand() * 90}%;top:${rand() * 90}%;width:${size}px;height:${size}px;` +
+    `--dx:${(rand() - 0.3) * 60}px;--dy:${(rand() - 0.6) * 80}px;` +
+    `animation-duration:${10 + rand() * 9}s;animation-delay:${-rand() * 18}s`;
+  motes.appendChild(m);
+}
+
+(function makeGrain() {
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = 160;
+  const g = cv.getContext("2d");
+  const img = g.createImageData(160, 160);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = rand() * 255;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  $("#grain").style.backgroundImage = `url(${cv.toDataURL()})`;
+})();
+
+// Wrap each word of every heading in a mask so it can slide up into view
+document.querySelectorAll(".copy h2").forEach((h2) => {
+  h2.innerHTML = h2.textContent.trim().split(/\s+/)
+    .map((word) => `<span class="w"><span>${word}</span></span>`).join(" ");
+});
+
+/* ------------------------------------------------------------------
+   4. TYPE
+   Each block belongs somewhere in the world (`at`, in camera vw) and
+   moves with it. Words rise out of their masks one after another, the
+   eyebrow leads and the line of body copy follows.
    ------------------------------------------------------------------ */
 const COPY = [
-  { el: $("#copyWake"),  at: 0,   depth: 1,    show: [-1, 0],       hide: [0.1, 0.16] },
-  { el: $("#copyMove"),  at: 150, depth: 0.14, show: [0.26, 0.33],  hide: [0.44, 0.5] },
-  { el: $("#copyFocus"), at: 300, depth: 1,    show: [0.57, 0.63],  hide: [0.71, 0.75], sharpen: [0.57, 0.7] },
-  { el: $("#copyReset"), at: 405, depth: 1,    show: [0.83, 0.88],  hide: [0.91, 0.94] },
+  { el: $("#copyWake"),  at: 0,   depth: 1,    show: [-1, 0],        hide: [0.1, 0.16], intro: true },
+  { el: $("#copyMove"),  at: 135, depth: 0.14, show: [0.26, 0.33],   hide: [0.44, 0.5] },
+  { el: $("#copyFocus"), at: 300, depth: 1,    show: [0.57, 0.63],   hide: [0.71, 0.75], sharpen: [0.57, 0.7] },
+  { el: $("#copyReset"), at: 405, depth: 1,    show: [0.83, 0.88],   hide: [0.91, 0.94] },
   { el: $("#copyFinal"), at: 410, depth: 1,    show: [0.945, 0.975], hide: [2, 3] },
-];
+].map((c) => ({
+  ...c,
+  words: [...c.el.querySelectorAll("h2 .w > span")],
+  eyebrow: c.el.querySelector(".eyebrow"),
+  body: c.el.querySelector("p:not(.eyebrow)"),
+}));
 
-function renderCopy(p, cam) {
+function renderCopy(p, cam, intro) {
   for (const c of COPY) {
-    const tin = ease.out(range(p, c.show[0], c.show[1]));
-    const tout = ease.inOut(range(p, c.hide[0], c.hide[1]));
-    const x = (c.at - cam) * c.depth * W / 100;
-    const y = (1 - tin) * 18 - tout * 12;
-    let opacity = tin * (1 - tout);
-    let extra = "";
+    const span = c.intro ? 0.05 : c.show[1] - c.show[0];   // the opening line is timed by the intro instead
+    const stagger = span * 0.2;
+    const tOut = ease.inOut(range(p, c.hide[0], c.hide[1]));
 
-    // FOCUS: the heading comes into focus as the room goes quiet
+    c.words.forEach((w, i) => {
+      let tin = ease.expo(range(p, c.show[0] + i * stagger, c.show[1] + i * stagger));
+      if (c.intro) tin = Math.min(tin, ease.expo(range(intro, 0.18 + i * 0.09, 0.62 + i * 0.09)));
+      const tout = ease.inOut(range(p, c.hide[0] + i * stagger * 0.5, c.hide[1] + i * stagger * 0.5));
+      w.style.transform = `translate3d(0, ${(1 - tin) * 105 - tout * 105}%, 0)`;
+    });
+
+    if (c.eyebrow) {
+      let t = ease.out(range(p, c.show[0] - 0.01, c.show[0] + span * 0.6));
+      if (c.intro) t = Math.min(t, ease.out(range(intro, 0.05, 0.45)));
+      c.eyebrow.style.opacity = 0.7 * t * (1 - tOut);
+      c.eyebrow.style.transform = `translate3d(0, ${(1 - t) * 10}px, 0)`;
+    }
+    if (c.body) {
+      let t = ease.out(range(p, c.show[0] + span * 0.5, c.show[1] + span * 0.5));
+      if (c.intro) t = Math.min(t, ease.out(range(intro, 0.5, 1)));
+      c.body.style.opacity = t * (1 - tOut);
+      c.body.style.transform = `translate3d(0, ${(1 - t) * 12}px, 0)`;
+    }
+
+    // The block itself rides along with its place in the world
+    const x = (c.at - cam) * c.depth * W / 100;
+    let extra = "";
     if (c.sharpen) {
+      // FOCUS: the heading comes into focus as the room goes quiet
       const s = ease.out(range(p, c.sharpen[0], c.sharpen[1]));
-      opacity *= 0.55 + 0.45 * s;
-      c.el.style.filter = reduceMotion ? "none" : `blur(${(1 - s) * 5}px)`;
+      c.el.style.filter = reduceMotion ? "none" : `blur(${(1 - s) * 4}px)`;
       extra = ` scale(${0.985 + 0.015 * s})`;
     }
-    c.el.style.opacity = opacity;
-    c.el.style.transform = `translate3d(${x}px, ${y}px, 0)${extra}`;
+    c.el.style.transform = `translate3d(${x}px, 0, 0)${extra}`;
   }
+
   // "Start again" waits a moment after the last line
   const again = ease.out(range(p, 0.972, 0.995));
   restart.style.opacity = again;
@@ -255,10 +412,11 @@ function renderCopy(p, cam) {
    ------------------------------------------------------------------ */
 let activeChapter = -1;
 
-function render(p) {
+function render(p, intro) {
   const c = sample(COLORS, p);
-  const cam = camera(p);
+  const cam = cameraAt(p);
   const d = dolly(p);
+  const sx = sunX(p), sy = sunY(p);
 
   // Time of day
   root.style.setProperty("--ink", rgba(c.ink));
@@ -266,13 +424,26 @@ function render(p) {
     root.style.setProperty("--" + key.replace(/[A-Z]/g, (ch) => "-" + ch.toLowerCase()), rgba(c[key]));
   }
   sky.style.background = `linear-gradient(180deg, ${rgba(c.skyTop)} 0%, ${rgba(c.skyBottom)} 78%)`;
+  haze.style.background = `linear-gradient(180deg, ${rgba(c.skyBottom, 0)} 40%, ${rgba(c.skyBottom, 0.5)} 74%, ${rgba(c.skyBottom, 0.15)} 100%)`;
   grade.style.backgroundColor = rgba(c.grade, c.gradeA);
   clouds.style.opacity = c.cloud;
   lightfall.style.opacity = c.light;
-  sunpatch.style.opacity = c.light;
+  starsEl.style.opacity = ease.inOut(range(p, 0.9, 1));
+  horizon.style.opacity = ease.inOut(range(p, 0.78, 0.92));
+  horizon.style.background = `radial-gradient(ellipse 45% 55% at ${sx}% 58%, rgba(255, 168, 120, 0.6), rgba(255, 168, 120, 0))`;
 
-  sun.style.transform = `translate3d(${sunX(p) * W / 100 - sunSize / 2}px, ${sunY(p) * H / 100 - sunSize / 2}px, 0)`;
+  sun.style.transform = `translate3d(${sx * W / 100 - sunSize / 2}px, ${sy * H / 100 - sunSize / 2}px, 0)`;
   sunImg.style.filter = `hue-rotate(${c.sunHue}deg) saturate(${c.sunSat})`;
+
+  // Shadows fall away from the sun, and stretch when it's low
+  root.style.setProperty("--cast-x", `${(50 - sx) * 0.06 * W / 100}px`);
+  root.style.setProperty("--cast-s", (1 + clamp((sy - 10) / 60) * 0.55).toFixed(3));
+
+  // Light shafts tilt as the sun climbs; window light slides across the studio
+  rays.style.opacity = c.light;
+  rays.style.transform = `skewX(${(sy - 40) * 0.25}deg)`;
+  sunpatch.style.opacity = c.light;
+  sunpatch.style.transform = `translate3d(${(72 - sx) * 0.5 * W / 100}px, 0, 0)`;
 
   // Camera + dolly. Each layer pans and scales in proportion to its depth.
   for (const L of layers) {
@@ -280,16 +451,31 @@ function render(p) {
     L.el.style.transform = `scale(${1 + (d - 1) * L.depth})`;
   }
 
-  // The walker moves through the world (she's inside the set layer)
-  walker.style.transform = `translate3d(${walk(p) * W / 100}px, 0, 0)`;
+  // Lens: rack focus, vignette, the exposure shift as you step outside
+  if (!reduceMotion) {
+    farLayer.style.filter = `blur(${farBlur(p).toFixed(2)}px)`;
+    midLayer.style.filter = `blur(${midBlur(p).toFixed(2)}px)`;
+  }
+  vignette.style.opacity = vignetteCurve(p);
+  exposure.style.opacity = exposureCurve(p);
+
+  // The walker
+  const wx = walk(p) * W / 100;
+  const pose = walkPose(wx / rigScale);
+  walker.style.transform = `translate3d(${wx}px, 0, 0)`;
+  rig.style.transform = `translate3d(0, ${pose.drop * rigScale}px, 0)`;
+  legBack.style.transform = `translateY(${-pose.liftB * rigScale}px) rotate(${pose.angB}deg)`;
+  legFront.style.transform = `translateY(${-pose.liftF * rigScale}px) rotate(${pose.angF}deg)`;
+  // Upper body: a slight twist with each step, plus the lean spring
+  torso.style.transform = `rotate(${(Math.sin(Math.PI * pose.c) * 0.6 + lean.value).toFixed(3)}deg)`;
 
   // Birds only fly at dusk
   const b = range(p, 0.84, 1);
   birds.style.opacity = Math.min(ease.out(range(p, 0.84, 0.88)), 1 - range(p, 0.97, 1)) * 0.85;
   birds.style.transform = `translate3d(${birdX(p) * W / 100 - birdsW / 2}px, ${birdY(p) * H / 100}px, 0) scale(${1 - b * 0.25})`;
 
-  renderCopy(p, cam);
-  hint.style.opacity = 1 - range(p, 0, 0.03);
+  renderCopy(p, cam, intro);
+  hint.style.opacity = Math.min(1 - range(p, 0, 0.03), range(intro, 0.7, 1));
 
   // Header: 06:00 → 22:00, progress line, current chapter
   const minutes = Math.floor(6 * 60 + p * 16 * 60);
@@ -322,6 +508,8 @@ let needsRender = true;
 let progress = scrollProgress();
 let renderedP = -1;
 let last = performance.now();
+const start = last;
+let lastWalkX = null;
 
 window.addEventListener("resize", measure);
 
@@ -334,9 +522,24 @@ function tick(now) {
   const target = scrollProgress();
   progress = reduceMotion ? target : progress + (target - progress) * (1 - Math.exp(-dt * 5));
 
+  // Opening: the first words rise in over ~1.8s after the page loads
+  const intro = reduceMotion ? 1 : clamp((now - start) / 1800);
+
+  // Lean spring: driven by how fast she's walking right now
+  const wx = walk(progress) * W / 100;
+  if (lastWalkX !== null && dt > 0) {
+    const speed = (wx - lastWalkX) / dt;                  // px per second
+    lean.target = clamp(speed * 0.0022, -2.5, 2.5);       // degrees of forward lean
+    const force = (lean.target - lean.value) * 60 - lean.velocity * 11;
+    lean.velocity += force * dt;
+    lean.value += lean.velocity * dt;
+  }
+  lastWalkX = wx;
+  const springMoving = Math.abs(lean.velocity) > 0.002 || Math.abs(lean.target - lean.value) > 0.002;
+
   // Only touch the page when something actually changed
-  if (needsRender || Math.abs(progress - renderedP) > 0.00002) {
-    render(progress);
+  if (needsRender || springMoving || intro < 1 || Math.abs(progress - renderedP) > 0.00002) {
+    render(progress, intro);
     renderedP = progress;
     needsRender = false;
   }

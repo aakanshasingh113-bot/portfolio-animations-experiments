@@ -21,7 +21,7 @@ A scroll-driven story of one person's day: Wake, Move, Focus and Reset. The whol
 - `index.html`: the world, built in depth layers (far hills and city, middle trees, the set, a foreground leaf) plus the text
 - `style.css`: how each scene is drawn and laid out
 - `script.js`: turns scroll into progress (0 → 1), then works out the camera, the time of day, the walker and the text from it
-- `images/`: the character and props, cut out from the illustration sheet
+- `images/`: the character and props, cut out from the illustration sheet. The walker is split into `walk-torso`, `walk-leg-back`, `walk-leg-front` and `walk-under` so her legs can move
 
 **Run it:** double-click `your-day-in-motion/index.html`.
 

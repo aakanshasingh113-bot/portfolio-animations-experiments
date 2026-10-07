@@ -48,10 +48,12 @@
       <div class="clouds" id="clouds" aria-hidden="true">
         <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span>
       </div>
-      <img class="birds" id="birds" src="images/birds.webp" alt="" width="134" height="76" aria-hidden="true" />
+      <div class="stars" id="stars" aria-hidden="true"></div>
+      <div class="horizon" id="horizon" aria-hidden="true"></div>
+      <div class="birds" id="birds" aria-hidden="true"><img src="images/birds.webp" alt="" width="134" height="76" /></div>
 
       <!-- FAR: hills and the city skyline -->
-      <div class="layer" data-depth="0.3" aria-hidden="true">
+      <div class="layer" data-depth="0.3" id="farLayer" aria-hidden="true">
         <div class="track">
           <div class="skyline">
             <span style="left:139vw;width:3vw;top:52vh"></span>
@@ -75,8 +77,11 @@
         </div>
       </div>
 
-      <!-- MIDDLE: park trees and a hedge -->
-      <div class="layer" data-depth="0.6" aria-hidden="true">
+      <!-- Haze: distant things fade into the sky colour (aerial perspective) -->
+      <div class="haze" id="haze" aria-hidden="true"></div>
+
+      <!-- MIDDLE: park trees -->
+      <div class="layer" data-depth="0.6" id="midLayer" aria-hidden="true">
         <div class="track">
           <span class="tree" style="left:72vw;--h:30"></span>
           <span class="tree" style="left:95vw;--h:22"></span>
@@ -96,11 +101,13 @@
             <div class="glow"></div>
             <div class="window window-arch"><i class="bar-v"></i><i class="bar-h"></i></div>
             <span class="curtain" aria-hidden="true"></span>
+            <div class="rays" id="rays"><i></i><i></i><i></i></div>
+            <div class="motes" id="motes"></div>
             <span class="sill"></span>
             <div class="floor"></div>
             <div class="lightfall" id="lightfall"></div>
             <span class="bed"></span>
-            <span class="contact" style="left:3vw;bottom:3.4vh;width:46vw"></span>
+            <span class="contact cast" style="left:3vw;bottom:3.4vh;width:46vw"></span>
             <img class="char char-wake" src="images/wake.webp" width="513" height="472"
                  alt="A woman stretching her arms up as she wakes in bed" />
             <img class="plant" src="images/plant.webp" width="157" height="168" alt="" />
@@ -115,10 +122,16 @@
             <span class="bush small" style="left:138vw"></span>
           </section>
 
+          <!-- The walker is a cut-out rig: two legs that pivot at the hip,
+               a pants-coloured underlay that hides the joint, and the torso. -->
           <div class="walker" id="walker">
-            <span class="contact"></span>
-            <img class="char char-walk" src="images/walk.webp" width="220" height="463"
-                 alt="The same woman walking with a tote bag over her shoulder" />
+            <span class="contact cast"></span>
+            <div class="rig" id="rig" role="img" aria-label="The same woman walking with a tote bag over her shoulder">
+              <img class="part" src="images/walk-under.webp" alt="" />
+              <img class="part leg-back" id="legBack" src="images/walk-leg-back.webp" alt="" />
+              <img class="part leg-front" id="legFront" src="images/walk-leg-front.webp" alt="" />
+              <img class="part torso" id="torso" src="images/walk-torso.webp" alt="" />
+            </div>
           </div>
 
           <!-- 03 FOCUS: studio -->
@@ -129,9 +142,11 @@
             <div class="sunpatch" id="sunpatch"></div>
             <span class="desk-top"></span>
             <span class="desk-front"></span>
-            <span class="contact" style="left:44vw;bottom:29.2vh;width:34vw"></span>
+            <span class="contact cast" style="left:44vw;bottom:29.2vh;width:34vw"></span>
             <img class="char char-focus" src="images/focus.webp" width="486" height="348"
                  alt="She works at a laptop, chin in hand, with books, a mug and a plant on the desk" />
+            <span class="screen-glow"></span>
+            <span class="steam steam-desk"><i></i><i></i></span>
             <span class="cut cut-right"></span>
           </section>
 
@@ -140,7 +155,8 @@
             <div class="parapet"></div>
             <div class="terrace-floor"></div>
             <img class="mug" src="images/mug.webp" width="95" height="124" alt="" />
-            <span class="contact" style="left:49vw;bottom:2.6vh;width:30vw"></span>
+            <span class="steam steam-terrace"><i></i><i></i></span>
+            <span class="contact cast" style="left:49vw;bottom:2.6vh;width:30vw"></span>
             <img class="char char-rest" src="images/rest.webp" width="369" height="324"
                  alt="She sits cross-legged with headphones on, eyes closed, resting" />
           </section>
@@ -156,6 +172,8 @@
 
       <!-- Colour grade: one light over everything, like a film grade -->
       <div class="grade" id="grade" aria-hidden="true"></div>
+      <div class="exposure" id="exposure" aria-hidden="true"></div>
+      <div class="vignette" id="vignette" aria-hidden="true"></div>
 
       <!-- TYPE: each block is anchored to a place in the world -->
       <div class="type">
@@ -186,6 +204,7 @@
       </div>
 
       <p class="scroll-hint" id="hint" aria-hidden="true">Scroll <span class="hint-line"></span></p>
+      <div class="grain" id="grain" aria-hidden="true"></div>
     </div>
   </main>
 
