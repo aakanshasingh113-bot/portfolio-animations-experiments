@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snakes &amp; Ladders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ecdfc4;
+    --paper-dark: #d9c7a3;
+    --ink: #4a3423;
+    --ink-soft: #7a6048;
+    --wood: #8a5a33;
+    --wood-dark: #6b4324;
+    --wood-light: #a8743f;
+    --p1: #d9534a;
+    --p2: #3f7fb5;
+    --card: #f8f0dc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Baloo 2", "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
+    color: var(--ink);
+    background-color: var(--paper);
+    /* kraft-paper fibres */
+    background-image:
+      repeating-linear-gradient(37deg, rgba(120, 90, 50, .045) 0 2px, transparent 2px 7px),
+      repeating-linear-gradient(-58deg, rgba(255, 250, 235, .08) 0 1px, transparent 1px 9px),
+      radial-gradient(ellipse at 50% 30%, #f3e8d0 0%, var(--paper) 55%, var(--paper-dark) 100%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #2f6f9f; outline-offset: 3px; }
+
+  main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    width: 100%;
+    max-width: 1060px;
+  }
+
+  /* ---------- Board ---------- */
+  .board-wrap {
+    flex: 0 0 auto;
+    width: min(640px, calc(100vw - 372px), calc(100dvh - 60px));
+  }
+  .frame {
+    position: relative;
+    padding: 3%;
+    padding-bottom: 8.5%;
+    border-radius: 14px;
+    background:
+      repeating-linear-gradient(92deg, rgba(0, 0, 0, .07) 0 3px, transparent 3px 11px),
+      repeating-linear-gradient(88deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 17px),
+      linear-gradient(180deg, var(--wood-light), var(--wood) 40%, var(--wood-dark));
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, .25),
+      inset 0 -3px 0 rgba(0, 0, 0, .25),
+      0 3px 0 #54341b,
+      0 14px 28px rgba(70, 45, 20, .35);
+  }
+  .frame-label {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 8.2%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4.5% 0 15%;
+    font-weight: 800;
+    letter-spacing: .12em;
+    color: #f1dcb4;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, .45);
+    font-size: clamp(9px, 2.2vmin, 15px);
+    pointer-events: none;
+  }
+  .frame-label span:first-child { opacity: .85; }
+
+  .board {
+    position: relative;
+    aspect-ratio: 1;
+    container-type: inline-size;
+    border-radius: 4px;
+    background: #f4ead2;
+    box-shadow: 0 0 0 2px rgba(60, 35, 15, .55), inset 0 0 18px rgba(90, 60, 30, .35);
+  }
+  .cells {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .cell {
+    position: relative;
+    border: 1px solid rgba(110, 80, 45, .28);
+    font-weight: 700;
+    font-size: 2.7cqw;
+    line-height: 1;
+    padding: .7cqw .9cqw;
+    color: rgba(74, 52, 35, .78);
+  }
+  .cell.c0 { background: #f1c4c4; } /* pink   */
+  .cell.c1 { background: #f4e2a2; } /* yellow */
+  .cell.c2 { background: #c6dcb6; } /* green  */
+  .cell.c3 { background: #bdd6e4; } /* blue   */
+  .cell.c4 { background: #d5c6e3; } /* lilac  */
+  .cell.goal { color: #7a4a12; }
+  .cell .tag {
+    position: absolute; left: 0; right: 0; bottom: .8cqw;
+    text-align: center; font-size: 3.6cqw;
+  }
+  /* faded cardboard: worn edges + centre fold */
+  .board::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 2;
+    background:
+      linear-gradient(90deg, transparent 49.6%, rgba(90, 60, 30, .22) 49.9%, rgba(255, 250, 235, .35) 50.15%, transparent 50.5%),
+      radial-gradient(ellipse at center, transparent 55%, rgba(120, 85, 45, .2) 100%),
+      repeating-linear-gradient(12deg, rgba(255, 248, 230, .09) 0 3px, transparent 3px 8px);
+  }
+  .art {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    overflow: visible;
+    filter: drop-shadow(0 .5cqw .4cqw rgba(60, 40, 20, .3));
+  }
+  .token {
+    position: absolute;
+    z-index: 3;
+    width: 6.2cqw; height: 6.2cqw;
+    --ox: 0cqw;
+    transform: translate(calc(-50% + var(--ox)), -50%);
+    transition: left .2s ease-in-out, top .2s ease-in-out, transform .25s ease;
+    pointer-events: none;
+  }
+  .token.sliding { transition: transform .25s ease; }
+  .peg {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border: .5cqw solid rgba(255, 255, 255, .85);
+    box-shadow: 0 .5cqw 0 rgba(0, 0, 0, .28), 0 .9cqw 1cqw rgba(0, 0, 0, .25);
+    display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 2.9cqw; line-height: 1;
+  }
+  .token.p1 .peg { background: radial-gradient(circle at 35% 30%, #f08c80, var(--p1) 60%, #a9342c); }
+  .token.p2 .peg { background: radial-gradient(circle at 35% 30%, #86b9e2, var(--p2) 60%, #285a86); }
+  .peg.hop { animation: hop .22s ease-out; }
+  @keyframes hop {
+    0% { transform: translateY(0) scale(1); }
+    45% { transform: translateY(-38%) scale(1.14); }
+    100% { transform: translateY(0) scale(1); }
+  }
+
+  /* ---------- Side panel ---------- */
+  .panel {
+    flex: 0 0 300px;
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 40px;
+    line-height: .95;
+    font-weight: 800;
+    color: var(--wood-dark);
+    text-shadow: 2px 2px 0 #f6ecd4, 4px 4px 0 rgba(107, 67, 36, .22);
+  }
+  h1 small { display: block; font-size: 15px; font-weight: 500; color: var(--ink-soft); text-shadow: none; margin-top: 6px; }
+
+  .mode {
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: #d8c6a0;
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: inset 0 2px 4px rgba(80, 50, 20, .3);
+  }
+  .mode button {
+    border: 0; background: transparent;
+    border-radius: 999px;
+    padding: 6px 8px;
+    font-weight: 700; font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .mode button[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 2px 0 rgba(90, 60, 30, .35);
+  }
+
+  .players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .player {
+    background: var(--card);
+    border: 2px solid #d6c39a;
+    border-radius: 14px;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+    min-width: 0;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .player .dot {
+    flex: 0 0 22px; height: 22px; border-radius: 50%;
+    border: 2px solid #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+  }
+  .player.p1 .dot { background: var(--p1); }
+  .player.p2 .dot { background: var(--p2); }
+  .player .name { font-weight: 800; font-size: 16px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player .where { font-size: 13px; line-height: 1.1; color: var(--ink-soft); }
+  .player.active { transform: translateY(-3px); box-shadow: 0 5px 0 rgba(90, 60, 30, .25); }
+  .player.p1.active { border-color: var(--p1); }
+  .player.p2.active { border-color: var(--p2); }
+
+  .roll-area {
+    display: flex; align-items: center; gap: 18px;
+    background: #cfe0c0;
+    background-image: radial-gradient(rgba(255, 255, 255, .25) 1px, transparent 1.5px);
+    background-size: 9px 9px;
+    border: 2px solid #a9c296;
+    border-radius: 18px;
+    padding: 18px 16px 22px;
+  }
+  .dice {
+    flex: 0 0 84px;
+    width: 84px; height: 84px;
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(145deg, #fffdf4 0%, #f6efdc 55%, #e2d7bd 100%);
+    box-shadow:
+      inset 3px 3px 4px rgba(255, 255, 255, .95),
+      inset -4px -5px 7px rgba(140, 115, 75, .38),
+      0 3px 0 #cdbf9f,
+      0 7px 0 #b3a482,
+      0 14px 14px rgba(60, 40, 20, .32);
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    padding: 13px;
+    gap: 2px;
+    transform: rotate(-4deg);
+  }
+  .dice:disabled { cursor: default; }
+  .pip {
+    place-self: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #7a4b3a, #3a2218 70%);
+    box-shadow: inset 0 -1px 1px rgba(255, 255, 255, .25), 0 1px 0 rgba(255, 255, 255, .8);
+    opacity: 0;
+  }
+  .pip.on { opacity: 1; }
+  .dice.one .pip.on { background: radial-gradient(circle at 35% 30%, #ef7d72, #b3322a 70%); width: 18px; height: 18px; }
+  .dice.shaking { animation: shake .34s linear infinite; }
+  .dice.landed { animation: land .35s ease-out; }
+  @keyframes shake {
+    0%   { transform: translate(0, 0) rotate(-4deg); }
+    20%  { transform: translate(-5px, -9px) rotate(-22deg) scale(1.06); }
+    40%  { transform: translate(6px, -3px) rotate(16deg); }
+    60%  { transform: translate(-4px, -11px) rotate(28deg) scale(1.08); }
+    80%  { transform: translate(5px, -2px) rotate(-14deg); }
+    100% { transform: translate(0, 0) rotate(-4deg); }
+  }
+  @keyframes land {
+    0% { transform: translateY(-12px) rotate(10deg) scale(1.12); }
+    55% { transform: translateY(3px) rotate(-6deg) scale(.96); }
+    100% { transform: translateY(0) rotate(-4deg) scale(1); }
+  }
+  .roll-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .btn {
+    border: 0;
+    border-radius: 14px;
+    padding: 8px 14px;
+    font-weight: 800; font-size: 19px;
+    color: #fff;
+    background: #d9773a;
+    box-shadow: 0 4px 0 #a9541f, 0 8px 10px rgba(80, 45, 15, .25);
+    transition: transform .08s, box-shadow .08s, background .2s;
+  }
+  .btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #a9541f; }
+  .btn:disabled { background: #b9a98a; box-shadow: 0 4px 0 #94866b; cursor: default; }
+  .hint { font-size: 13px; color: #55704a; line-height: 1.2; }
+  kbd {
+    font: inherit; font-size: 12px; font-weight: 700;
+    background: #f8f0dc; border: 1px solid #a9c296; border-bottom-width: 2px;
+    border-radius: 5px; padding: 0 5px;
+  }
+
+  .status {
+    background: var(--card);
+    border: 2px dashed #c9b388;
+    border-radius: 14px;
+    padding: 10px 12px;
+    min-height: 68px;
+    font-size: 17px; line-height: 1.25; font-weight: 500;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .status .who { font-weight: 800; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
+  .status .who.p1 { color: #b53e35; }
+  .status .who.p2 { color: #2f6795; }
+  .status b { font-weight: 800; }
+
+  .row { display: flex; gap: 10px; }
+  .btn-quiet {
+    flex: 1;
+    border: 2px solid #c9b388;
+    background: transparent;
+    border-radius: 12px;
+    padding: 5px 10px;
+    font-weight: 700; font-size: 15px;
+    color: var(--ink-soft);
+  }
+  .btn-quiet:hover { background: rgba(255, 250, 235, .6); color: var(--ink); }
+
+  /* ---------- Win screen ---------- */
+  .win {
+    position: fixed; inset: 0; z-index: 10;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(74, 52, 35, .55);
+    padding: 20px;
+  }
+  .win.show { display: flex; }
+  .win canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .win-card {
+    position: relative;
+    background: var(--card);
+    border: 6px solid var(--wood);
+    border-radius: 24px;
+    padding: 26px 34px 30px;
+    text-align: center;
+    max-width: 400px; width: 100%;
+    box-shadow: 0 8px 0 var(--wood-dark), 0 24px 40px rgba(0, 0, 0, .35);
+    animation: pop .45s cubic-bezier(.3, 1.6, .5, 1);
+  }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .win-card .trophy { font-size: 64px; line-height: 1; }
+  .win-card h2 { margin: 6px 0 2px; font-size: 34px; line-height: 1.05; font-weight: 800; color: var(--wood-dark); }
+  .win-card p { margin: 0 0 18px; font-size: 17px; color: var(--ink-soft); }
+
+  /* ---------- Mobile: controls below the board ---------- */
+  @media (max-width: 820px) {
+    body { align-items: flex-start; padding: 10px; }
+    main { flex-direction: column; gap: 14px; }
+    .board-wrap { width: min(100%, 560px); order: 2; }
+    .panel { display: contents; }
+    .panel > header { order: 1; width: min(100%, 560px); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .panel > :not(header) { order: 3; width: min(100%, 560px); }
+    h1 { font-size: 26px; }
+    h1 small { display: none; }
+    .mode { flex: 0 0 auto; }
+    .mode button { font-size: 14px; padding: 4px 10px; }
+    .panel > .roll-area { order: 3; }
+    .panel > .status { order: 4; min-height: 58px; }
+    .panel > .players { order: 5; }
+    .panel > .row { order: 6; }
+    .hint { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dice.shaking, .dice.landed, .peg.hop, .win-card { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="board-wrap">
+    <div class="frame">
+      <div class="board" id="board">
+        <div class="cells" id="cells"></div>
+        <svg class="art" id="art" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
+        <div class="token p1" id="tok0"><div class="peg">1</div></div>
+        <div class="token p2" id="tok1"><div class="peg">2</div></div>
+      </div>
+      <div class="frame-label"><span>◀ START</span><span>SNAKES &amp; LADDERS</span></div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <header>
+      <h1>Snakes &amp; Ladders<small>First to square 100 wins!</small></h1>
+      <div class="mode" role="group" aria-label="Game mode">
+        <button id="modeCpu" aria-pressed="true">vs Computer</button>
+        <button id="mode2p" aria-pressed="false">2 Players</button>
+      </div>
+    </header>
+
+    <div class="players">
+      <div class="player p1" id="card0"><span class="dot"></span><div style="min-width:0"><div class="name" id="name0">You</div><div class="where" id="where0">Start</div></div></div>
+      <div class="player p2" id="card1"><span class="dot"></span><div style="min-width:0"><div class="name" id="name1">Computer</div><div class="where" id="where1">Start</div></div></div>
+    </div>
+
+    <div class="roll-area">
+      <button class="dice" id="dice" aria-label="Roll the dice"></button>
+      <div class="roll-side">
+        <button class="btn" id="rollBtn">Roll!</button>
+        <div class="hint">or press <kbd>Space</kbd></div>
+      </div>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <div class="row">
+      <button class="btn-quiet" id="newBtn">↻ New Game</button>
+      <button class="btn-quiet" id="soundBtn" aria-pressed="true">🔊 Sound on</button>
+    </div>
+  </section>
+</main>
+
+<div class="win" id="win" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+  <canvas id="confetti"></canvas>
+  <div class="win-card">
+    <div class="trophy">🏆</div>
+    <h2 id="winTitle">You win!</h2>
+    <p id="winSub">Reached square 100.</p>
+    <button class="btn" id="winNew">New Game</button>
+  </div>
+</div>
+
+<script>
+/* ================= Board data ================= */
+const LADDERS = { 4: 14, 9: 31, 20: 38, 28: 84, 40: 59, 51: 67, 63: 81, 71: 91 };
+const SNAKES  = { 17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 99: 78 };
+const SNAKE_COLORS = [
+  ['#6fae5c', '#3f7a35', '#cfe6a8'], ['#e39a4a', '#a8621c', '#f8dba0'],
+  ['#9a7cc4', '#614491', '#dccbf0'], ['#d9675f', '#9c342e', '#f6c3b4'],
+  ['#4fa7a0', '#27706a', '#bfe6dc'], ['#dd82ab', '#a2476f', '#f8cfe0'],
+  ['#5c8fd0', '#2f5c96', '#c4dbf4'], ['#b3a43f', '#776b1c', '#ece3a0']
+];
+const START_Y = 1045; // pos 0 sits on the wooden frame below square 1
+
+// centre of square n in a 1000x1000 board (1 bottom-left, zig-zag upward)
+function coords(n) {
+  if (n <= 0) return { x: 50, y: START_Y };
+  const i = n - 1, row = Math.floor(i / 10);
+  let col = i % 10;
+  if (row % 2) col = 9 - col;
+  return { x: col * 100 + 50, y: (9 - row) * 100 + 50 };
+}
+
+/* ================= Draw board ================= */
+const $ = id => document.getElementById(id);
+const cellsEl = $('cells'), art = $('art');
+
+for (let row = 9; row >= 0; row--) {
+  for (let col = 0; col < 10; col++) {
+    const n = row * 10 + (row % 2 ? 9 - col : col) + 1;
+    const d = document.createElement('div');
+    d.className = 'cell c' + ((col + row * 2) % 5) + (n === 100 ? ' goal' : '');
+    d.textContent = n;
+    if (n === 100) d.insertAdjacentHTML('beforeend', '<span class="tag">🏁</span>');
+    cellsEl.appendChild(d);
+  }
+}
+
+const f = v => v.toFixed(1);
+let svg = '';
+
+// ladders: two wooden rails + rungs
+for (const [from, to] of Object.entries(LADDERS)) {
+  const a = coords(+from), b = coords(to);
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+  const ux = dx / len, uy = dy / len, nx = -uy, ny = ux, w = 17;
+  let rungs = '';
+  const count = Math.max(2, Math.round((len - 40) / 46));
+  for (let i = 0; i <= count; i++) {
+    const t = 22 + (len - 44) * i / count;
+    const cx = a.x + ux * t, cy = a.y + uy * t;
+    rungs += `M${f(cx - nx * w)} ${f(cy - ny * w)}L${f(cx + nx * w)} ${f(cy + ny * w)}`;
+  }
+  const rail = s => `M${f(a.x + nx * w * s)} ${f(a.y + ny * w * s)}L${f(b.x + nx * w * s)} ${f(b.y + ny * w * s)}`;
+  svg += `<g stroke-linecap="round" fill="none">
+    <path d="${rungs}" stroke="#6b4324" stroke-width="9"/>
+    <path d="${rungs}" stroke="#c08a4e" stroke-width="5.5"/>
+    <path d="${rail(1)}${rail(-1)}" stroke="#5e3a1e" stroke-width="12"/>
+    <path d="${rail(1)}${rail(-1)}" stroke="#a8743f" stroke-width="8"/>
+    <path d="${rail(1)}${rail(-1)}" stroke="#d3a468" stroke-width="2" transform="translate(-1.5 -1.5)"/>
+  </g>`;
+}
+
+// snakes: tapered wavy body, spots, head with eyes and tongue
+const snakePaths = {};
+Object.entries(SNAKES).forEach(([from, to], idx) => {
+  const a = coords(+from), b = coords(to);
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+  const nx = -dy / len, ny = dx / len;
+  const waves = Math.max(1, Math.round(len / 190) * 0.5 + 0.5);
+  const amp = Math.min(30, len * 0.11) * (idx % 2 ? -1 : 1);
+  const N = 70, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, off = amp * Math.sin(2 * Math.PI * waves * t);
+    pts.push({ x: a.x + dx * t + nx * off, y: a.y + dy * t + ny * off });
+  }
+  snakePaths[from] = pts;
+  const [body, dark, light] = SNAKE_COLORS[idx];
+  const L = [], R = [];
+  let spots = '';
+  pts.forEach((p, i) => {
+    const q = pts[Math.min(N, i + 1)], o = pts[Math.max(0, i - 1)];
+    const tx = q.x - o.x, ty = q.y - o.y, tl = Math.hypot(tx, ty) || 1;
+    const px = -ty / tl, py = tx / tl, t = i / N;
+    const hw = 2.5 + 12.5 * Math.pow(1 - t, 0.7);
+    L.push(`${f(p.x + px * hw)} ${f(p.y + py * hw)}`);
+    R.push(`${f(p.x - px * hw)} ${f(p.y - py * hw)}`);
+    if (i > 5 && i < N - 4 && i % 5 === 0) spots += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(hw * 0.42)}"/>`;
+  });
+  const h = pts[0], h2 = pts[3];
+  const ang = Math.atan2(h.y - h2.y, h.x - h2.x) * 180 / Math.PI;
+  svg += `<g>
+    <path d="M${L.join('L')}L${R.reverse().join('L')}Z" fill="${body}" stroke="${dark}" stroke-width="3.5" stroke-linejoin="round"/>
+    <g fill="${light}">${spots}</g>
+    <g transform="translate(${f(h.x)} ${f(h.y)}) rotate(${f(ang)})">
+      <path d="M20 0L32 0M32 0L39 -5M32 0L39 5" stroke="#c23a3a" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <ellipse cx="4" cy="0" rx="23" ry="18" fill="${body}" stroke="${dark}" stroke-width="3.5"/>
+      <circle cx="8" cy="-9" r="6.5" fill="#fff" stroke="${dark}" stroke-width="1.5"/>
+      <circle cx="8" cy="9" r="6.5" fill="#fff" stroke="${dark}" stroke-width="1.5"/>
+      <circle cx="10" cy="-9" r="3" fill="#2b1d14"/>
+      <circle cx="10" cy="9" r="3" fill="#2b1d14"/>
+    </g>
+  </g>`;
+});
+art.innerHTML = svg;
+
+/* ================= Sound (Web Audio beeps) ================= */
+let actx = null, soundOn = true;
+function audio() {
+  if (!soundOn) return null;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  } catch (e) { return null; }
+}
+function tone(freq, start, dur, type = 'square', vol = 0.06, slideTo) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + start, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t0);
+  o.stop(t0 + dur + 0.03);
+}
+const sfx = {
+  tick:   () => tone(220 + Math.random() * 260, 0, 0.035, 'square', 0.03),
+  hop:    () => tone(520, 0, 0.08, 'square', 0.05, 780),
+  stuck:  () => { tone(196, 0, 0.12, 'square', 0.05); tone(165, 0.13, 0.18, 'square', 0.05); },
+  ladder: () => [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, i * 0.09, 0.16, 'triangle', 0.1)),
+  snake:  () => { tone(466, 0, 0.75, 'sawtooth', 0.05, 82); tone(233, 0.05, 0.7, 'square', 0.03, 55); },
+  win:    () => [[523, .12], [659, .12], [784, .12], [1047, .24], [784, .12], [1047, .5]]
+                 .reduce((t, [n, d]) => { tone(n, t, d + 0.06, 'square', 0.07); tone(n / 2, t, d + 0.06, 'triangle', 0.08); return t + d; }, 0)
+};
+
+/* ================= Game state ================= */
+const toks = [$('tok0'), $('tok1')];
+const diceEl = $('dice'), rollBtn = $('rollBtn'), statusEl = $('status');
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+diceEl.innerHTML = '<span class="pip"></span>'.repeat(9);
+const pips = [...diceEl.children];
+
+let mode = 'cpu';          // 'cpu' | '2p'
+let pos = [0, 0];
+let turn = 0;
+let busy = false, over = false;
+let cpuTimer = null;
+let game = 0;              // bumps on New Game so stale animations stop
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const names = () => mode === 'cpu' ? ['You', 'Computer'] : ['Player 1', 'Player 2'];
+const isCpuTurn = () => mode === 'cpu' && turn === 1;
+
+function showDice(n) {
+  pips.forEach((p, i) => p.classList.toggle('on', PIPS[n].includes(i)));
+  diceEl.classList.toggle('one', n === 1);
+}
+
+function place(p, at) {
+  const c = typeof at === 'number' ? coords(at) : at;
+  toks[p].style.left = c.x / 10 + '%';
+  toks[p].style.top = c.y / 10 + '%';
+}
+function spread() { // nudge tokens apart when they share a square
+  const same = pos[0] === pos[1];
+  toks[0].style.setProperty('--ox', same ? '-2.1cqw' : '0cqw');
+  toks[1].style.setProperty('--ox', same ? '2.1cqw' : '0cqw');
+}
+
+function say(p, html) {
+  statusEl.innerHTML = p == null ? `<span>${html}</span>` : `<span class="who p${p + 1}">${names()[p]}</span><span>${html}</span>`;
+}
+
+function refresh() {
+  const n = names();
+  for (const p of [0, 1]) {
+    $('name' + p).textContent = n[p];
+    $('where' + p).textContent = pos[p] ? 'Square ' + pos[p] : 'Start';
+    $('card' + p).classList.toggle('active', !over && turn === p);
+  }
+  const wait = busy || over || isCpuTurn();
+  rollBtn.disabled = diceEl.disabled = wait;
+  rollBtn.textContent = over ? 'Game over'
+    : isCpuTurn() ? 'Computer…'
+    : busy ? 'Rolling…'
+    : mode === '2p' ? `Roll, P${turn + 1}!` : 'Roll!';
+  $('modeCpu').setAttribute('aria-pressed', mode === 'cpu');
+  $('mode2p').setAttribute('aria-pressed', mode === '2p');
+}
+
+function queueCpu() {
+  clearTimeout(cpuTimer);
+  if (isCpuTurn() && !busy && !over) cpuTimer = setTimeout(() => roll(true), 1000);
+}
+
+// glide a token along a list of board points
+function slide(p, pts, ms) {
+  return new Promise(res => {
+    const g = game, tok = toks[p], t0 = performance.now();
+    tok.classList.add('sliding');
+    (function step(now) {
+      if (g !== game) { tok.classList.remove('sliding'); return res(); }
+      const t = Math.min(1, (now - t0) / ms);
+      const e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const fpos = e * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(fpos)), k = fpos - i;
+      place(p, { x: pts[i].x + (pts[i + 1].x - pts[i].x) * k, y: pts[i].y + (pts[i + 1].y - pts[i].y) * k });
+      if (t < 1) requestAnimationFrame(step);
+      else { tok.classList.remove('sliding'); res(); }
+    })(t0);
+  });
+}
+
+async function roll(fromCpu = false) {
+  if (busy || over) return;
+  if (isCpuTurn() && !fromCpu) return;
+  const g = game, p = turn;
+  busy = true;
+  refresh();
+
+  // shake + flicker
+  diceEl.classList.remove('landed');
+  diceEl.classList.add('shaking');
+  let last = 0;
+  for (let i = 0; i < 11; i++) {
+    let n;
+    do { n = 1 + Math.floor(Math.random() * 6); } while (n === last);
+    last = n;
+    showDice(n);
+    sfx.tick();
+    await sleep(55 + i * 6);
+    if (g !== game) return;
+  }
+  const value = 1 + Math.floor(Math.random() * 6);
+  showDice(value);
+  diceEl.classList.remove('shaking');
+  void diceEl.offsetWidth;
+  diceEl.classList.add('landed');
+  tone(140, 0, 0.09, 'square', 0.07);
+  await sleep(320);
+  if (g !== game) return;
+
+  let msg = `Rolled <b>${value}</b>`;
+  const target = pos[p] + value;
+
+  if (target > 100) {
+    const need = 100 - pos[p];
+    msg += ` — too many! Needs exactly <b>${need}</b> to finish.`;
+    sfx.stuck();
+    say(p, msg);
+    await sleep(500);
+  } else {
+    say(p, msg);
+    const peg = toks[p].firstElementChild;
+    while (pos[p] < target) {
+      pos[p]++;
+      place(p, pos[p]);
+      spread();
+      peg.classList.remove('hop');
+      void peg.offsetWidth;
+      peg.classList.add('hop');
+      sfx.hop();
+      $('where' + p).textContent = 'Square ' + pos[p];
+      await sleep(240);
+      if (g !== game) return;
+    }
+    const here = pos[p];
+    if (LADDERS[here]) {
+      const to = LADDERS[here];
+      msg += ` 🪜 Ladder! Up to <b>${to}</b>`;
+      say(p, msg);
+      sfx.ladder();
+      await sleep(150);
+      await slide(p, [coords(here), coords(to)], 750);
+      if (g !== game) return;
+      pos[p] = to;
+    } else if (SNAKES[here]) {
+      const to = SNAKES[here];
+      msg += ` 🐍 Bitten! Down to <b>${to}</b>`;
+      say(p, msg);
+      sfx.snake();
+      await sleep(250);
+      await slide(p, snakePaths[here], 950);
+      if (g !== game) return;
+      pos[p] = to;
+    } else {
+      msg += ` → square <b>${here}</b>`;
+    }
+    place(p, pos[p]);
+    spread();
+  }
+
+  if (pos[p] === 100) {
+    over = true;
+    busy = false;
+    say(p, msg + ' 🏁 Home!');
+    refresh();
+    celebrate(p);
+    return;
+  }
+
+  if (value === 6) msg += ' · 🎉 Six! Roll again.';
+  else turn = 1 - turn;
+  say(p, msg);
+  busy = false;
+  refresh();
+  queueCpu();
+}
+
+function newGame() {
+  game++;
+  clearTimeout(cpuTimer);
+  stopConfetti();
+  $('win').classList.remove('show');
+  pos = [0, 0]; turn = 0; busy = false; over = false;
+  diceEl.classList.remove('shaking', 'landed');
+  toks.forEach((t, p) => { t.classList.remove('sliding'); place(p, 0); });
+  spread();
+  showDice(1);
+  say(null, mode === 'cpu'
+    ? 'Roll the dice to begin. You are <b style="color:#b53e35">red</b>!'
+    : '<b style="color:#b53e35">Player 1</b> rolls first. Pass the device after each turn.');
+  refresh();
+}
+
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  clearTimeout(cpuTimer);
+  refresh();
+  queueCpu(); // if it's player 2's turn, the computer takes over
+}
+
+/* ================= Celebration ================= */
+const cv = $('confetti'), cx = cv.getContext('2d');
+let confettiRaf = 0, bits = [];
+function celebrate(p) {
+  const n = names()[p];
+  $('winTitle').textContent = n === 'You' ? 'You win!' : n + ' wins!';
+  $('winSub').textContent = mode === 'cpu' && p === 1 ? 'The computer got to 100 first. Rematch?' : 'First to square 100. Well played!';
+  document.querySelector('.win .trophy').textContent = mode === 'cpu' && p === 1 ? '🤖' : '🏆';
+  $('win').classList.add('show');
+  sfx.win();
+  $('winNew').focus();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
+  const colors = ['#e2675e', '#f0c648', '#7fb96a', '#5c9bd0', '#a784cf', '#ee8fb5', '#f39a4c'];
+  bits = Array.from({ length: 170 }, () => ({
+    x: Math.random() * W, y: -Math.random() * H, w: (6 + Math.random() * 8) * dpr, h: (4 + Math.random() * 6) * dpr,
+    vy: (2 + Math.random() * 3.5) * dpr, vx: (Math.random() - .5) * 2 * dpr,
+    r: Math.random() * 6.28, vr: (Math.random() - .5) * .3, sway: Math.random() * 6.28,
+    c: colors[Math.floor(Math.random() * colors.length)]
+  }));
+  cancelAnimationFrame(confettiRaf);
+  (function draw() {
+    cx.clearRect(0, 0, W, H);
+    for (const b of bits) {
+      b.sway += .05; b.x += b.vx + Math.sin(b.sway) * dpr; b.y += b.vy; b.r += b.vr;
+      if (b.y > H + 20) { b.y = -20; b.x = Math.random() * W; }
+      cx.save();
+      cx.translate(b.x, b.y);
+      cx.rotate(b.r);
+      cx.scale(1, Math.cos(b.sway * 1.7));
+      cx.fillStyle = b.c;
+      cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+      cx.restore();
+    }
+    confettiRaf = requestAnimationFrame(draw);
+  })();
+}
+function stopConfetti() {
+  cancelAnimationFrame(confettiRaf);
+  cx.clearRect(0, 0, cv.width, cv.height);
+}
+
+/* ================= Wiring ================= */
+const press = (el, fn) => el.addEventListener('click', e => { fn(); if (el !== $('winNew')) e.currentTarget.blur(); });
+press(rollBtn, () => roll());
+press(diceEl, () => roll());
+press($('newBtn'), newGame);
+press($('winNew'), newGame);
+press($('modeCpu'), () => setMode('cpu'));
+press($('mode2p'), () => setMode('2p'));
+press($('soundBtn'), () => {
+  soundOn = !soundOn;
+  $('soundBtn').textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off';
+  $('soundBtn').setAttribute('aria-pressed', soundOn);
+});
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat) return;
+  if (document.activeElement && document.activeElement.tagName === 'BUTTON') return; // let the focused button handle it
+  e.preventDefault();
+  roll();
+});
+
+newGame();
+</script>
+</body>
+</html>
