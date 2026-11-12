@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Pen Fight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Gochi+Hand&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #fbf7ea; --rule: #b7cfe8; --margin: #e2574c; --ink: #26356b; --pencil: #5c5a55;
+    --p1: #e2574c; --p2: #3d8fd1; --red-ink: #d0252b;
+    --hand: "Patrick Hand", "Comic Sans MS", cursive;
+    --head: "Gochi Hand", "Patrick Hand", "Comic Sans MS", cursive;
+    --ui: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; background: #2e2a24; font-family: var(--ui); color: var(--ink); }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  button:focus-visible, input:focus-visible { outline: 3px solid #2f6fd0; outline-offset: 3px; }
+
+  /* ---------- Game layer ---------- */
+  #gameWrap { position: fixed; inset: 0; }
+  #game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #board {
+    position: absolute; left: 0; right: 0; top: 0; z-index: 2;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4px 16px;
+    padding: max(8px, env(safe-area-inset-top)) 118px 10px 18px;
+    background:
+      radial-gradient(ellipse at 20% 40%, rgba(255,255,255,.07), transparent 45%),
+      radial-gradient(ellipse at 75% 70%, rgba(255,255,255,.05), transparent 40%),
+      linear-gradient(180deg, #2c5a45, #244c3a);
+    border-bottom: 9px solid #8a5a33;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 2px 0 #5d3a1d, 0 8px 18px rgba(0,0,0,.4);
+    color: #f4f1e4; font-family: var(--head);
+    text-shadow: 0 0 5px rgba(255,255,255,.35);
+    pointer-events: none;
+  }
+  .b-date, .b-class { font-size: clamp(13px, 1.7vw, 19px); opacity: .7; filter: blur(.6px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .b-class { text-align: right; }
+  .b-score { display: flex; align-items: center; gap: clamp(8px, 2vw, 22px); font-size: clamp(17px, 2.6vw, 27px); }
+  .pl { display: flex; align-items: center; gap: 8px; max-width: 34vw; }
+  .pl .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 3px solid transparent; line-height: 1.15; }
+  .pl.p1 .nm { color: #ffb4ab; } .pl.p2 .nm { color: #a9d6ff; }
+  .pl.turn .nm { border-bottom-color: currentColor; }
+  .pips { display: inline-flex; gap: 4px; }
+  .pips i { width: .62em; height: .62em; border: 2px solid #f4f1e4; border-radius: 50%; opacity: .75; }
+  .pips i.on { background: #f4f1e4; opacity: 1; box-shadow: 0 0 6px rgba(255,255,255,.6); }
+  #rnd { font-size: .68em; opacity: .8; white-space: nowrap; }
+  #banner {
+    position: absolute; left: 50%; top: 22%; z-index: 3; pointer-events: none;
+    font: 400 clamp(26px, 5.4vw, 46px) var(--head); color: #fff; white-space: nowrap;
+    padding: .1em .9em .15em; border-radius: 8px; transform: translate(-50%, 0) rotate(-2deg);
+    background: var(--p1); box-shadow: 0 5px 0 rgba(0,0,0,.25), 0 12px 22px rgba(0,0,0,.3);
+    opacity: 0;
+  }
+  #banner.p2 { background: var(--p2); }
+  #banner.go { animation: banner 1.7s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes banner {
+    0% { opacity: 0; transform: translate(-190%, 0) rotate(-8deg); }
+    18%, 72% { opacity: 1; transform: translate(-50%, 0) rotate(-2deg); }
+    100% { opacity: 0; transform: translate(110%, 0) rotate(4deg); }
+  }
+  .pop {
+    position: fixed; z-index: 4; pointer-events: none; white-space: nowrap;
+    font: 400 clamp(24px, 4.6vw, 42px) var(--head); color: #ffe04a;
+    text-shadow: 2px 2px 0 #7a1d12, -1px -1px 0 #7a1d12, 1px -1px 0 #7a1d12, -1px 1px 0 #7a1d12, 0 6px 12px rgba(0,0,0,.4);
+    animation: pop 1.25s ease-out both;
+  }
+  @keyframes pop {
+    0% { transform: translate(-50%, -50%) scale(.2) rotate(-14deg); opacity: 0; }
+    18% { transform: translate(-50%, -60%) scale(1.25) rotate(-6deg); opacity: 1; }
+    30% { transform: translate(-50%, -62%) scale(1) rotate(-6deg); }
+    75% { opacity: 1; }
+    100% { transform: translate(-50%, -150%) scale(1) rotate(-3deg); opacity: 0; }
+  }
+  .corner { position: fixed; z-index: 60; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); display: flex; gap: 8px; }
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: 3px solid #5d3a1d; background: #fff6d8;
+    font-size: 20px; line-height: 1; display: grid; place-items: center; box-shadow: 0 3px 0 #5d3a1d, 0 6px 10px rgba(0,0,0,.3);
+  }
+  .icon-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5d3a1d; }
+  #pauseBtn { display: none; }
+  body.in-game #pauseBtn { display: grid; }
+
+  /* ---------- Pages (notebook) ---------- */
+  .page {
+    position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center;
+    overflow-y: auto; overflow-x: hidden; transform-origin: left center;
+    padding: max(18px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom));
+  }
+  .page.active { display: flex; animation: pageIn .45s ease both; }
+  .page.turn-out { animation: pageTurn .62s ease-in both; z-index: 20; pointer-events: none; }
+  @keyframes pageIn { from { opacity: .5; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+  @keyframes pageTurn { to { transform: perspective(1800px) rotateY(-86deg); opacity: .15; filter: brightness(.6); } }
+  .paper {
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(90deg, transparent 53px, var(--margin) 53px, var(--margin) 55px, transparent 55px),
+      repeating-linear-gradient(180deg, transparent 0 33px, var(--rule) 33px 34px);
+    background-attachment: local;
+    padding-left: 70px;
+  }
+  .paper::before { /* punched holes */
+    content: ""; position: absolute; left: 16px; top: 0; bottom: 0; width: 20px; pointer-events: none;
+    background: radial-gradient(circle, #2e2a24 0 8px, rgba(0,0,0,.15) 8px 10px, transparent 10px) center 18% / 20px 240px repeat-y;
+  }
+  .page h1 { font: 400 clamp(32px, 6.4vw, 54px)/1.05 var(--head); margin: 6px 0 4px; text-align: center; color: var(--ink); }
+  .page h1 u { text-decoration: none; background: linear-gradient(transparent 62%, #ffe873 62%); padding: 0 .15em; }
+  .sub { font: 400 clamp(17px, 2.6vw, 22px)/1.25 var(--hand); color: var(--pencil); text-align: center; margin: 0 0 18px; }
+  .col { width: min(100%, 880px); display: flex; flex-direction: column; align-items: center; margin: auto 0; }
+  .notes { display: flex; flex-wrap: wrap; gap: 26px 22px; justify-content: center; margin: 18px 0 10px; }
+  .note {
+    position: relative; border: 0; background: #ffe873; color: #3a2f1c;
+    font: 700 clamp(17px, 2.4vw, 21px)/1.15 var(--ui); padding: .85em 1.25em .7em; min-width: 132px;
+    box-shadow: 2px 5px 9px rgba(60,40,10,.28); transform: rotate(-2.2deg); transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .note small { display: block; font: 400 .78em var(--hand); opacity: .8; }
+  .note::before { /* tape */
+    content: ""; position: absolute; top: -11px; left: 50%; width: 58px; height: 21px; margin-left: -29px;
+    background: rgba(255,255,255,.6); border-left: 1px dashed rgba(0,0,0,.08); border-right: 1px dashed rgba(0,0,0,.08);
+    box-shadow: 0 1px 2px rgba(0,0,0,.14); transform: rotate(-3deg);
+  }
+  .note:nth-child(2n) { transform: rotate(1.8deg); }
+  .note:nth-child(3n) { transform: rotate(-1deg); }
+  .note.pink { background: #ffb9cb; } .note.blue { background: #aedcff; } .note.green { background: #c1eda5; } .note.plain { background: #fff; }
+  .note:hover, .note:focus-visible { transform: rotate(0) scale(1.05); box-shadow: 3px 9px 14px rgba(60,40,10,.3); }
+  .note:active { transform: rotate(0) scale(.98); }
+  .note:disabled { filter: grayscale(.8); opacity: .55; cursor: default; transform: rotate(-2deg); }
+  .note.sm { font-size: 16px; min-width: 0; padding: .6em 1em .5em; }
+  .group-label { font: 400 26px var(--head); margin: 22px 0 0; color: var(--ink); }
+
+  /* Title: notebook cover */
+  #title {
+    background:
+      repeating-linear-gradient(48deg, rgba(60,30,5,.05) 0 2px, transparent 2px 7px),
+      repeating-linear-gradient(-36deg, rgba(255,235,200,.05) 0 1px, transparent 1px 8px),
+      radial-gradient(ellipse at 50% 30%, #c79a67, #a8794a 60%, #8b5f37);
+    padding-left: 44px; justify-content: flex-start;
+  }
+  #title::before { /* spine */
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 28px; min-height: 100%;
+    background: repeating-linear-gradient(180deg, transparent 0 14px, rgba(255,240,210,.5) 14px 24px, transparent 24px 38px), linear-gradient(90deg, #3d2a1c, #5a3f2a);
+    box-shadow: 4px 0 8px rgba(0,0,0,.3);
+  }
+  .page h1.logo { font: 400 clamp(54px, 13vw, 112px)/.9 var(--head); color: #fff8e6; margin: 4px 0 0; letter-spacing: .02em; text-align: center;
+    text-shadow: 3px 3px 0 #5a2f12, 6px 7px 0 rgba(60,30,10,.35); transform: rotate(-2.5deg); }
+  #titleArt { width: min(74vw, 340px); height: auto; margin: -6px 0 2px; }
+  .label {
+    width: min(100%, 440px); background: #fffdf5; border-radius: 10px; padding: 14px 18px 12px; margin: 4px 0 6px;
+    border: 3px solid var(--margin); outline: 2px solid var(--margin); outline-offset: -9px;
+    box-shadow: 0 6px 16px rgba(40,20,5,.4); transform: rotate(.6deg);
+    font: 400 clamp(19px, 3vw, 23px) var(--hand); color: var(--ink);
+  }
+  .label .row { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; }
+  .label .row span { flex: 0 0 auto; }
+  .label input {
+    flex: 1; min-width: 0; border: 0; border-bottom: 2px dotted #8091b8; background: transparent; padding: 0 4px;
+    font: 400 1.08em var(--head); color: #1c2b8a; border-radius: 0;
+  }
+  .label .row b { font: 400 1.15em var(--head); color: var(--red-ink); letter-spacing: .06em; }
+  .best { font: 400 19px var(--hand); color: #fff3d6; margin-top: 12px; text-shadow: 0 1px 0 rgba(0,0,0,.4); text-align: center; }
+
+  /* Pen cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 16px; width: 100%; margin: 6px 0 18px; }
+  .card {
+    position: relative; text-align: left; border: 0; border-radius: 14px; padding: 7px; background: var(--cc, #2456b8);
+    box-shadow: 0 3px 0 rgba(0,0,0,.25), 0 8px 14px rgba(60,40,10,.25); transition: transform .16s ease, box-shadow .16s ease;
+    display: flex; flex-direction: column; color: #2b2622;
+  }
+  .card:hover { transform: translateY(-4px) rotate(-.6deg); }
+  .card.sel { transform: translateY(-6px) scale(1.03); box-shadow: 0 0 0 4px #ffe04a, 0 0 0 7px #7a4b12, 0 16px 22px rgba(60,40,10,.35); }
+  .card .in { background: linear-gradient(180deg, #fffdf4, #f3ead2); border-radius: 9px; padding: 6px 8px 8px; flex: 1; display: flex; flex-direction: column; }
+  .card .top { display: flex; justify-content: space-between; font: 700 11px var(--ui); letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+  .card canvas { width: 100%; height: auto; border-radius: 6px; margin: 3px 0 4px; background: radial-gradient(ellipse at 40% 35%, #e9c48e, #c9955a); box-shadow: inset 0 0 0 2px rgba(90,55,20,.25); }
+  .card .cname { font: 400 20px/1.05 var(--head); }
+  .card .ctag { font: 400 14px/1.15 var(--hand); color: #6a5f52; min-height: 2.3em; margin: 2px 0 5px; }
+  .stat { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 6px; font: 700 11px var(--ui); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
+  .stat em { height: 8px; border-radius: 4px; background: #dccfb2; overflow: hidden; box-shadow: inset 0 1px 1px rgba(0,0,0,.2); }
+  .stat u { display: block; height: 100%; border-radius: 4px; background: var(--cc, #2456b8); }
+  .card.rare::after { content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 45%, rgba(160,220,255,.35) 52%, transparent 65%); background-size: 250% 100%; animation: holo 3.2s linear infinite; mix-blend-mode: screen; }
+  @keyframes holo { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+  .card.locked { filter: grayscale(1) brightness(.85); cursor: not-allowed; }
+  .card.locked:hover { transform: none; }
+  .card .lock { position: absolute; inset: 7px; border-radius: 9px; background: rgba(40,34,28,.9); color: #fff; display: grid; place-content: center; text-align: center; padding: 10px; font: 400 17px/1.2 var(--hand); }
+  .card .lock b { font-size: 30px; display: block; }
+  .bar { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; margin: 12px 0 6px; }
+
+  /* Loading */
+  #loading { justify-content: center; }
+  .memory { font: 400 clamp(26px, 5.4vw, 44px)/1.15 var(--head); color: var(--ink); text-align: center; max-width: 640px; margin: 10px 0 18px; }
+  .scribble { width: min(70%, 320px); height: 12px; border-radius: 6px; background: #e6dcc0; overflow: hidden; }
+  .scribble i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(115deg, #555 0 3px, #777 3px 6px); border-radius: 6px; }
+  #loading.active .scribble i { animation: fill 1.6s ease-in-out forwards; }
+  @keyframes fill { to { width: 100%; } }
+
+  /* ---------- Overlays ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(30,22,14,.55); overflow-y: auto; }
+  .overlay.show { display: flex; }
+  .slip {
+    position: relative; width: min(100%, 460px); margin: auto; background-color: var(--paper); border-radius: 6px; padding: 22px 24px 24px;
+    background-image: repeating-linear-gradient(180deg, transparent 0 31px, var(--rule) 31px 32px);
+    box-shadow: 0 14px 40px rgba(0,0,0,.45); text-align: center; animation: slipIn .4s cubic-bezier(.3,1.5,.5,1) both;
+  }
+  @keyframes slipIn { from { transform: translateY(40px) rotate(-4deg) scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+  .slip h2 { font: 400 clamp(30px, 6vw, 42px)/1.05 var(--head); margin: 0 0 6px; color: var(--ink); }
+  .slip p { font: 400 20px/1.3 var(--hand); margin: 4px 0; color: var(--pencil); }
+  .remark { font: 400 clamp(26px, 5.4vw, 34px)/1.1 var(--head); color: var(--red-ink); transform: rotate(-5deg); margin: 16px 0 8px; display: inline-block; border-bottom: 3px solid var(--red-ink); padding: 0 .2em; }
+  .remark small { display: block; font: 400 .5em var(--hand); letter-spacing: .04em; }
+  .gift { font: 700 17px var(--ui); background: #ffe873; display: inline-block; padding: 4px 12px; border-radius: 20px; margin-top: 8px; color: #5a3b00; }
+
+  /* Report card */
+  .report { width: min(100%, 520px); background: #fffdf3; background-image: none; border: 3px double #26356b; padding: 18px 20px 20px; }
+  .report .school { font: 800 clamp(17px, 3.4vw, 22px)/1.1 var(--ui); letter-spacing: .08em; text-transform: uppercase; color: #26356b; }
+  .report .prog { font: 500 14px var(--ui); letter-spacing: .2em; text-transform: uppercase; color: #6b7190; margin-bottom: 8px; }
+  .report .who { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 14px; font: 400 19px var(--hand); text-align: left; border-bottom: 1px solid #c9cde0; padding-bottom: 6px; }
+  .report .who b { font: 400 1.1em var(--head); color: #1c2b8a; }
+  .report table { width: 100%; border-collapse: collapse; margin: 10px 0; font: 500 15px var(--ui); }
+  .report th, .report td { border: 1.5px solid #26356b; padding: 5px 6px; }
+  .report th { background: #e7ebfa; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .report td.hand { font: 400 24px var(--head); color: #1c2b8a; }
+  .report td.grade { font: 400 34px/1 var(--head); color: var(--red-ink); }
+  .report .tr { text-align: left; font: 400 19px/1.3 var(--hand); color: var(--pencil); }
+  .report .tr i { font: 400 1.2em var(--head); color: var(--red-ink); font-style: normal; }
+  .report .signs { display: flex; justify-content: space-between; gap: 14px; margin-top: 14px; font: 400 16px var(--hand); color: var(--pencil); text-align: left; flex-wrap: wrap; }
+  .report .sig { font: 400 28px/1 var(--head); color: #1c2b8a; transform: rotate(-6deg); display: inline-block; margin-left: 6px; }
+  .trophy { font-size: 62px; line-height: 1; animation: bob 1.4s ease-in-out infinite alternate; }
+  @keyframes bob { to { transform: translateY(-6px) rotate(4deg); } }
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 50; pointer-events: none; }
+
+  .lunch svg { width: min(78%, 250px); height: auto; margin: 2px 0 4px; }
+  #howCanvas { width: 100%; max-width: 380px; height: auto; border-radius: 8px; background: #c9955a; box-shadow: inset 0 0 0 3px rgba(90,55,20,.3); }
+  .how ul { text-align: left; font: 400 19px/1.3 var(--hand); color: var(--ink); padding-left: 22px; margin: 10px 0 4px; }
+  .how li { margin: 3px 0; }
+
+  @media (max-width: 640px) {
+    #board { grid-template-columns: 1fr; padding-right: 12px; padding-left: 12px; }
+    .b-score { grid-row: 2; justify-content: center; }
+    .b-class { text-align: left; grid-row: 1; min-height: 44px; line-height: 44px; padding-right: 106px; }
+    .pl { max-width: 36vw; }
+    .b-date { display: none; }
+    .paper { padding-left: 46px; background-image: linear-gradient(90deg, transparent 33px, var(--margin) 33px, var(--margin) 35px, transparent 35px), repeating-linear-gradient(180deg, transparent 0 33px, var(--rule) 33px 34px); }
+    .paper::before { left: 6px; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .paper h1 { margin-top: 46px; }
+    .card .ctag { font-size: 13px; }
+  }
+  @media (max-height: 520px) and (orientation: landscape) {
+    .logo { font-size: 54px; } #titleArt { display: none; } .label { padding: 6px 14px; font-size: 18px; }
+    .notes { margin: 12px 0 4px; gap: 18px; }
+    .slip { padding: 12px 20px 16px; }
+    .slip h2 { font-size: 28px; }
+    .lunch svg { width: 130px; }
+    .lunch p { display: none; }
+    #howCanvas { max-width: 250px; }
+    .how ul { font-size: 16px; margin: 4px 0 0; }
+    .trophy { font-size: 38px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .page.active, .page.turn-out, .slip, .trophy, .card.rare::after { animation-duration: .01s; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ GAME LAYER ============ -->
+<div id="gameWrap">
+  <canvas id="game"></canvas>
+  <div id="board">
+    <div class="b-date" id="bDate"></div>
+    <div class="b-score">
+      <div class="pl p1" id="pl0"><span class="nm" id="n0"></span><span class="pips" id="pp0"></span></div>
+      <div id="rnd">Round 1</div>
+      <div class="pl p2" id="pl1"><span class="pips" id="pp1"></span><span class="nm" id="n1"></span></div>
+    </div>
+    <div class="b-class" id="bClass"></div>
+  </div>
+  <div id="banner"></div>
+</div>
+
+<div class="corner">
+  <button class="icon-btn" id="pauseBtn" aria-label="Pause">⏸</button>
+  <button class="icon-btn" id="muteBtn" aria-label="Mute sound">🔊</button>
+</div>
+
+<!-- ============ PAGES ============ -->
+<section class="page active" id="title">
+  <div class="col">
+    <h1 class="logo">Pen Fight</h1>
+    <canvas id="titleArt" width="680" height="220"></canvas>
+    <div class="label">
+      <div class="row"><span>Name:</span><input id="name0" maxlength="12" autocomplete="off" spellcheck="false" aria-label="Player 1 name"></div>
+      <div class="row"><span>Bench partner:</span><input id="name1" maxlength="12" autocomplete="off" spellcheck="false" aria-label="Player 2 name"></div>
+      <div class="row"><span>Class:</span><input id="klass" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Class"></div>
+      <div class="row"><span>Subject:</span><b>PEN FIGHT</b></div>
+    </div>
+    <div class="notes">
+      <button class="note" id="startBtn">Open notebook ➜</button>
+      <button class="note pink" id="howBtn">How to play</button>
+    </div>
+    <div class="best" id="bestLine"></div>
+  </div>
+</section>
+
+<section class="page paper" id="mode">
+  <div class="col">
+    <h1><u>Who's fighting today?</u></h1>
+    <p class="sub">Best of 5. Knock the other pen off the desk.</p>
+    <div class="notes">
+      <button class="note blue" data-mode="2p">2 Players<small>pass and play on one device</small></button>
+    </div>
+    <div class="group-label">vs Computer</div>
+    <div class="notes">
+      <button class="note green" data-mode="cpu" data-diff="easy">Easy<small>last-bench daydreamer</small></button>
+      <button class="note" data-mode="cpu" data-diff="medium">Medium<small>middle-row regular</small></button>
+      <button class="note pink" data-mode="cpu" data-diff="hard">Hard<small>the class champion</small></button>
+    </div>
+    <div class="bar"><button class="note plain sm" data-go="title">← Back</button></div>
+  </div>
+</section>
+
+<section class="page paper" id="pens">
+  <div class="col" style="margin-top:0">
+    <h1 id="pickTitle">Pick your pen</h1>
+    <p class="sub" id="pickSub">Every pen plays differently. Choose wisely.</p>
+    <div class="cards" id="cards"></div>
+    <div class="bar">
+      <button class="note plain sm" id="pickBack">← Back</button>
+      <button class="note green" id="pickOk">Lock it in ✓</button>
+    </div>
+  </div>
+</section>
+
+<section class="page paper" id="loading">
+  <div class="col">
+    <p class="sub">Remember this?</p>
+    <div class="memory" id="memory"></div>
+    <div class="scribble"><i></i></div>
+    <p class="sub" id="loadNote" style="margin-top:16px"></p>
+  </div>
+</section>
+
+<!-- ============ OVERLAYS ============ -->
+<div class="overlay" id="roundRes"><div class="slip">
+  <p id="rrRound"></p><h2 id="rrTitle"></h2><p id="rrScore"></p>
+  <div class="remark" id="rrRemark"></div><div id="rrGift"></div>
+  <div class="notes"><button class="note" id="rrNext">Next round ➜</button></div>
+</div></div>
+
+<div class="overlay" id="matchRes"><div class="slip report" id="reportCard"></div></div>
+
+<div class="overlay" id="pause"><div class="slip lunch">
+  <h2>Lunch break!</h2>
+  <svg viewBox="0 0 260 150" aria-hidden="true">
+    <ellipse cx="130" cy="136" rx="110" ry="9" fill="rgba(0,0,0,.15)"/>
+    <g transform="rotate(-14 205 60)"><rect x="150" y="18" width="104" height="74" rx="14" fill="#c9d0d6" stroke="#8d969e" stroke-width="3"/><rect x="160" y="28" width="84" height="54" rx="9" fill="none" stroke="#eef2f5" stroke-width="3"/></g>
+    <rect x="14" y="42" width="170" height="92" rx="16" fill="#d6dce1" stroke="#8d969e" stroke-width="3"/>
+    <rect x="24" y="52" width="86" height="72" rx="9" fill="#aab3bb"/><rect x="116" y="52" width="58" height="33" rx="8" fill="#aab3bb"/><rect x="116" y="91" width="58" height="33" rx="8" fill="#aab3bb"/>
+    <circle cx="60" cy="86" r="28" fill="#e8c88f"/><circle cx="72" cy="92" r="27" fill="#f1d7a4" stroke="#d9b579" stroke-width="1.5"/>
+    <g fill="#b9853f"><circle cx="64" cy="84" r="3"/><circle cx="80" cy="98" r="2.5"/><circle cx="84" cy="82" r="2"/><circle cx="68" cy="104" r="2"/></g>
+    <g><circle cx="134" cy="68" r="9" fill="#e9a23b"/><circle cx="150" cy="70" r="8" fill="#d9822b"/><circle cx="160" cy="64" r="6" fill="#6aa84f"/><circle cx="142" cy="62" r="4" fill="#6aa84f"/></g>
+    <g fill="#fff"><ellipse cx="130" cy="106" rx="5" ry="2.5"/><ellipse cx="142" cy="102" rx="5" ry="2.5"/><ellipse cx="154" cy="108" rx="5" ry="2.5"/><ellipse cx="146" cy="113" rx="5" ry="2.5"/><ellipse cx="134" cy="115" rx="5" ry="2.5"/><ellipse cx="162" cy="101" rx="5" ry="2.5"/></g>
+  </svg>
+  <p>Tiffin's open. The fight can wait.</p>
+  <div class="notes">
+    <button class="note green" id="resumeBtn">Resume</button>
+    <button class="note" id="restartBtn">Restart</button>
+    <button class="note pink" id="menuBtn">Main Menu</button>
+    <button class="note blue sm" id="pauseHow">How to play</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="howto"><div class="slip how">
+  <h2>How to play</h2>
+  <canvas id="howCanvas" width="640" height="300"></canvas>
+  <ul>
+    <li>Press on <b>your pen</b>, drag backwards, and let go to flick it.</li>
+    <li>Grab the <b>middle</b> for a straight shot. Grab near an <b>end</b> to make it spin.</li>
+    <li>Knock the other pen off the desk to win the round. Lose your own and you lose it.</li>
+    <li>First to win 3 rounds takes the match.</li>
+  </ul>
+  <div class="notes"><button class="note" id="howClose">Got it!</button></div>
+</div></div>
+
+<canvas id="fx"></canvas>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. CONSTANTS
+   ===================================================================== */
+const W = 1000, H = 600;              // desk top surface, world units
+const MARGIN = 52, MARGIN_SMALL = 24;  // world units of floor shown around the desk (less on phones, so the desk is bigger)
+const DESK_PAD = 70;                  // padding of the pre-rendered desk image
+const SUB_DT = 1 / 300, MAX_SUB = 14; // physics sub-step
+const MU_G = 660;                     // sliding friction deceleration (units/s^2)
+const LIN_DRAG = 0.55, ANG_DRAG = 0.7;
+const RESTITUTION = 0.4, CONTACT_MU = 0.25;
+const FLICK_IMPULSE = 1250, SPIN_SCALE = 0.5, MAX_SPEED = 1500, MAX_SPIN = 30;
+const MAX_DRAG = 150, MIN_POWER = 0.07;
+const FALL_TIME = 0.9, WIN_ROUNDS = 3, MOVE_TIMEOUT = 8;
+const P_COL = ['#e2574c', '#3d8fd1'];
+const TAU = Math.PI * 2;
+
+const PENS = [
+  { id: 'classic', name: 'Classic Ballpoint', tag: 'The legend. Balanced in every way.', color: '#2456b8',
+    stats: { weight: 3, speed: 3, spin: 3, grip: 3 }, m: 1, len: 150, rad: 7, speed: 1, spin: 1, fric: 1 },
+  { id: 'metal', name: 'Heavy Metal', tag: 'Hard to push around. Slow off the mark.', color: '#6d7780',
+    stats: { weight: 5, speed: 1, spin: 2, grip: 4 }, m: 1.9, len: 142, rad: 7.5, speed: 1.5, spin: .8, fric: 1.15 },
+  { id: 'gel', name: 'Gel Pen', tag: 'Light, quick, and spins like a top.', color: '#e0457b',
+    stats: { weight: 1, speed: 5, spin: 5, grip: 2 }, m: .7, len: 148, rad: 6.5, speed: .8, spin: 1.5, fric: .9 },
+  { id: 'fat4', name: '4-Colour Fatty', tag: 'Wide body, grips the desk.', color: '#3b6fd4',
+    stats: { weight: 4, speed: 3, spin: 2, grip: 5 }, m: 1.3, len: 146, rad: 11, speed: 1.2, spin: .8, fric: 1.35 },
+  { id: 'pencil', name: 'Pencil with Eraser', tag: 'Light and long. Reaches further.', color: '#e0a92a',
+    stats: { weight: 1, speed: 4, spin: 3, grip: 3 }, m: .6, len: 176, rad: 6, speed: .7, spin: 1, fric: 1 },
+  { id: 'chewed', name: 'Chewed Cap', tag: 'Somebody bit it. Spin is anyone’s guess.', color: '#1c8c6c',
+    stats: { weight: 3, speed: 3, spin: 4, grip: 3 }, m: 1, len: 150, rad: 7, speed: 1, spin: 1.1, fric: 1, quirk: 'chewed' },
+  { id: 'space', name: 'Space Pen', tag: 'Fast and slippery. Mind the edge.', color: '#3a3f8f',
+    stats: { weight: 2, speed: 5, spin: 3, grip: 1 }, m: .9, len: 150, rad: 7, speed: 1.1, spin: 1, fric: .7 },
+  { id: 'fountain', name: 'Fountain Pen', tag: 'Heavy. Leaves ink when it gets hit.', color: '#23232b',
+    stats: { weight: 4, speed: 2, spin: 2, grip: 3 }, m: 1.6, len: 152, rad: 8, speed: 1.3, spin: .9, fric: 1.05, quirk: 'ink' },
+  { id: 'scented', name: 'Scented Gel', tag: 'Smells of strawberry. Glides and whirls.', color: '#8a4fd6', unlock: 3,
+    stats: { weight: 1, speed: 5, spin: 4, grip: 3 }, m: .75, len: 148, rad: 6.5, speed: .85, spin: 1.3, fric: .95, quirk: 'sparkle' },
+  { id: 'ten', name: '10-Colour Monster', tag: 'A brick with ten refills.', color: '#e8553a', unlock: 5,
+    stats: { weight: 5, speed: 3, spin: 1, grip: 5 }, m: 1.6, len: 142, rad: 13, speed: 1.42, spin: .7, fric: 1.4 },
+  { id: 'topper', name: 'Topper’s Pen', tag: 'Gold clip. Goes exactly where you aim.', color: '#b8892b', unlock: 8,
+    stats: { weight: 3, speed: 4, spin: 2, grip: 4 }, m: 1.15, len: 152, rad: 7.5, speed: 1.2, spin: .7, fric: 1.1 }
+];
+const PEN_BY_ID = Object.fromEntries(PENS.map(p => [p.id, p]));
+
+// Desk objects: all collide as capsules (hl = half length of the core segment, r = radius)
+const PROPS = [
+  { id: 'geobox', x: 838, y: 104, a: -0.12, hl: 38, r: 38, m: 4, fric: 1.5 },
+  { id: 'ruler', x: 300, y: 548, a: 0.04, hl: 105, r: 10, m: .8, fric: 1.1 },
+  { id: 'eraser', x: 505, y: 172, a: 0.5, hl: 8, r: 14, m: .5, fric: 1.6 },
+  { id: 'coin', x: 520, y: 425, a: 0, hl: 0, r: 13, m: .5, fric: .7 },
+  { id: 'paper', x: 150, y: 112, a: 0.3, hl: 0, r: 20, m: .15, fric: 1.2 },
+  { id: 'shaving', x: 612, y: 505, a: 0.2, hl: 0, r: 8, m: .06, fric: 1.8 },
+  { id: 'shaving', x: 636, y: 488, a: 2.1, hl: 0, r: 8, m: .06, fric: 1.8 },
+  { id: 'shaving', x: 596, y: 480, a: 4.0, hl: 0, r: 7, m: .06, fric: 1.8 }
+];
+
+const MEMORIES = [
+  'Last bench = best bench', 'Lending a pen and never getting it back',
+  'The whole class punished for one person’s mistake', 'Sharing one tiffin between five people',
+  '“May I come in, ma’am?”', 'Borrowing a rubber and returning half of it',
+  'Covering notebooks in brown paper every April', 'Free period = pen fight championship'
+];
+const REMARKS_LOSE = ['Needs improvement', 'Careless mistakes', 'Can do better', 'Pay attention in class', 'Must practise at home', 'See me after class'];
+const REMARKS_DRAW = ['Both of you, stand outside!', 'Talking in class. Both.', 'Two pens on the floor. Pick them up.'];
+const POPS = { shot: 'What a shot!', gone: 'Gone!', full: 'Full power!', close: 'Close one!', bull: 'Bullseye!' };
+const AI_LEVEL = {
+  easy:   { angles: [0], powers: [.6], angErr: .24, powErr: .25 },
+  medium: { angles: [-.14, 0, .14], powers: [.5, .7, .9], angErr: .1, powErr: .12 },
+  hard:   { angles: [-.2, -.1, -.04, 0, .04, .1, .2], powers: [.45, .62, .8, 1], angErr: .025, powErr: .03 }
+};
+
+/* =====================================================================
+   2. UTILITIES + STORAGE
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
+const buzz = ms => { try { if (navigator.vibrate && !store.muted) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
+function mulberry(seed) { return () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shade(hex, amt) { // amt > 0 lightens, < 0 darkens
+  const n = parseInt(hex.slice(1), 16), t = amt < 0 ? 0 : 255, p = Math.abs(amt);
+  const r = Math.round(lerp(n >> 16, t, p)), g = Math.round(lerp(n >> 8 & 255, t, p)), b = Math.round(lerp(n & 255, t, p));
+  return `rgb(${r},${g},${b})`;
+}
+
+const STORE_KEY = 'penfight.v1';
+const store = { best: 0, streak: 0, unlocked: [], muted: false, names: ['', ''], klass: '7-B', monitor: '' };
+function loadStore() { try { Object.assign(store, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch (e) { /* storage unavailable */ } }
+function saveStore() { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* storage unavailable */ } }
+loadStore();
+const isUnlocked = def => !def.unlock || store.unlocked.includes(def.id);
+
+/* =====================================================================
+   3. PHYSICS  (capsule rigid bodies, impulses, friction)
+   ===================================================================== */
+function makeBody(kind, def, x, y, a) {
+  const r = kind === 'pen' ? def.rad : def.r, hl = kind === 'pen' ? def.len / 2 - def.rad : def.hl;
+  const L = 2 * hl + 2 * r, m = def.m, I = m * (L * L / 12 + r * r / 4);
+  return { kind, def, x, y, a, vx: 0, vy: 0, w: 0, hl, r, m, im: 1 / m, I, iI: 1 / I, fric: def.fric,
+    angDec: 3 * MU_G * def.fric / Math.max(L, 40), falling: false, fallT: 0, dead: false, owner: -1 };
+}
+
+let _s = 0, _t = 0; // closest-point parameters (avoids allocating per pair)
+function segClosest(p1x, p1y, q1x, q1y, p2x, p2y, q2x, q2y) {
+  const d1x = q1x - p1x, d1y = q1y - p1y, d2x = q2x - p2x, d2y = q2y - p2y, rx = p1x - p2x, ry = p1y - p2y;
+  const a = d1x * d1x + d1y * d1y, e = d2x * d2x + d2y * d2y, f = d2x * rx + d2y * ry;
+  let s, t;
+  if (a <= 1e-9 && e <= 1e-9) { s = t = 0; }
+  else if (a <= 1e-9) { s = 0; t = clamp(f / e, 0, 1); }
+  else {
+    const c = d1x * rx + d1y * ry;
+    if (e <= 1e-9) { t = 0; s = clamp(-c / a, 0, 1); }
+    else {
+      const b = d1x * d2x + d1y * d2y, den = a * e - b * b;
+      s = den > 1e-9 ? clamp((b * f - c * e) / den, 0, 1) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) { t = 0; s = clamp(-c / a, 0, 1); } else if (t > 1) { t = 1; s = clamp((b - c) / a, 0, 1); }
+    }
+  }
+  _s = s; _t = t;
+}
+
+function collide(A, B, world) {
+  const dx0 = B.x - A.x, dy0 = B.y - A.y, reach = A.hl + A.r + B.hl + B.r;
+  if (dx0 * dx0 + dy0 * dy0 > reach * reach) return;
+  const ca = Math.cos(A.a), sa = Math.sin(A.a), cb = Math.cos(B.a), sb = Math.sin(B.a);
+  const a1x = A.x - ca * A.hl, a1y = A.y - sa * A.hl, a2x = A.x + ca * A.hl, a2y = A.y + sa * A.hl;
+  const b1x = B.x - cb * B.hl, b1y = B.y - sb * B.hl, b2x = B.x + cb * B.hl, b2y = B.y + sb * B.hl;
+  segClosest(a1x, a1y, a2x, a2y, b1x, b1y, b2x, b2y);
+  let px = a1x + (a2x - a1x) * _s, py = a1y + (a2y - a1y) * _s, qx = b1x + (b2x - b1x) * _t, qy = b1y + (b2y - b1y) * _t;
+  // Near-parallel pens: use the middle of the overlap so they don't get a false twist from an end contact
+  if (A.hl > 1 && B.hl > 1 && Math.abs(ca * sb - sa * cb) < 0.08) {
+    const p1 = (b1x - A.x) * ca + (b1y - A.y) * sa, p2 = (b2x - A.x) * ca + (b2y - A.y) * sa;
+    const lo = Math.max(-A.hl, Math.min(p1, p2)), hi = Math.min(A.hl, Math.max(p1, p2));
+    if (lo < hi) {
+      const mid = (lo + hi) / 2;
+      px = A.x + ca * mid; py = A.y + sa * mid;
+      const tb = clamp((px - B.x) * cb + (py - B.y) * sb, -B.hl, B.hl);
+      qx = B.x + cb * tb; qy = B.y + sb * tb;
+    }
+  }
+  let nx = qx - px, ny = qy - py, d = Math.hypot(nx, ny);
+  const rs = A.r + B.r;
+  if (d >= rs) return;
+  if (d < 1e-6) { d = Math.hypot(dx0, dy0) || 1; nx = dx0 / d; ny = dy0 / d; d = 0; } else { nx /= d; ny /= d; }
+  const pen = rs - d, tot = A.im + B.im;
+  const cx = px + nx * (A.r - pen / 2), cy = py + ny * (A.r - pen / 2);
+  // positional correction
+  const corr = Math.max(pen - 0.05, 0) * 0.9 / tot;
+  A.x -= nx * corr * A.im; A.y -= ny * corr * A.im; B.x += nx * corr * B.im; B.y += ny * corr * B.im;
+  // normal impulse
+  const rax = cx - A.x, ray = cy - A.y, rbx = cx - B.x, rby = cy - B.y;
+  const rvx = (B.vx - B.w * rby) - (A.vx - A.w * ray), rvy = (B.vy + B.w * rbx) - (A.vy + A.w * rax);
+  const vn = rvx * nx + rvy * ny;
+  if (vn >= 0) return;
+  const ran = rax * ny - ray * nx, rbn = rbx * ny - rby * nx;
+  const j = -(1 + RESTITUTION) * vn / (tot + ran * ran * A.iI + rbn * rbn * B.iI);
+  A.vx -= j * nx * A.im; A.vy -= j * ny * A.im; A.w -= ran * j * A.iI;
+  B.vx += j * nx * B.im; B.vy += j * ny * B.im; B.w += rbn * j * B.iI;
+  // friction impulse along the tangent
+  const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty;
+  const rat = rax * ty - ray * tx, rbt = rbx * ty - rby * tx;
+  const jt = clamp(-vt / (tot + rat * rat * A.iI + rbt * rbt * B.iI), -CONTACT_MU * j, CONTACT_MU * j);
+  A.vx -= jt * tx * A.im; A.vy -= jt * ty * A.im; A.w -= rat * jt * A.iI;
+  B.vx += jt * tx * B.im; B.vy += jt * ty * B.im; B.w += rbt * jt * B.iI;
+  if (world.onHit) world.onHit(A, B, cx, cy, j);
+}
+
+function stepWorld(world, dt) {
+  const bs = world.bodies, n = bs.length;
+  for (let i = 0; i < n; i++) {
+    const b = bs[i];
+    if (b.dead) continue;
+    if (b.falling) { // off the desk: no more collisions, just the fall animation
+      b.fallT += dt / FALL_TIME; b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
+      const k = 1 - 1.6 * dt; b.vx *= k; b.vy *= k;
+      if (b.fallT >= 1) { b.dead = true; b.vx = b.vy = b.w = 0; }
+      continue;
+    }
+    const sp = Math.hypot(b.vx, b.vy);
+    if (sp > 0) {
+      let ns = Math.max(0, sp - MU_G * b.fric * dt) * (1 - LIN_DRAG * dt);
+      if (ns < 2) ns = 0; else if (ns > MAX_SPEED) ns = MAX_SPEED;
+      const k = ns / sp; b.vx *= k; b.vy *= k;
+    }
+    const aw = Math.abs(b.w);
+    if (aw > 0) {
+      let nw = Math.max(0, aw - b.angDec * dt) * (1 - ANG_DRAG * dt);
+      if (nw < 0.03) nw = 0; else if (nw > MAX_SPIN) nw = MAX_SPIN;
+      b.w = b.w < 0 ? -nw : nw;
+    }
+    b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
+  }
+  for (let i = 0; i < n; i++) {
+    const A = bs[i]; if (A.dead || A.falling) continue;
+    for (let k = i + 1; k < n; k++) { const B = bs[k]; if (!B.dead && !B.falling) collide(A, B, world); }
+  }
+  for (let i = 0; i < n; i++) {
+    const b = bs[i];
+    if (b.dead || b.falling) continue;
+    if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) { // centre of mass left the desk
+      b.falling = true; b.fallT = 0;
+      if (Math.hypot(b.vx, b.vy) < 70) { // make sure it tips outwards
+        const ox = b.x < 0 ? -1 : b.x > W ? 1 : 0, oy = b.y < 0 ? -1 : b.y > H ? 1 : 0;
+        b.vx = ox * 80; b.vy = oy * 80;
+      }
+      b.w += (b.w < 0 ? -1 : 1) * 2.5;
+      if (world.onFall) world.onFall(b);
+    }
+  }
+}
+function worldAtRest(world) {
+  for (const b of world.bodies) { if (b.dead) continue; if (b.falling || b.vx || b.vy || b.w) return false; }
+  return true;
+}
+// Slingshot flick: an impulse applied at the grab point along the pen
+function applyFlick(pen, grabT, ang, power, wobble) {
+  const J = FLICK_IMPULSE * power * pen.def.speed, ux = Math.cos(ang), uy = Math.sin(ang);
+  let v = J * pen.im; if (v > MAX_SPEED) v = MAX_SPEED;
+  pen.vx += ux * v; pen.vy += uy * v;
+  const rx = Math.cos(pen.a) * grabT, ry = Math.sin(pen.a) * grabT;
+  pen.w += (rx * uy - ry * ux) * J * pen.iI * SPIN_SCALE * pen.def.spin;
+  if (pen.def.quirk === 'chewed') pen.w += wobble * 7 * power;
+  pen.w = clamp(pen.w, -MAX_SPIN, MAX_SPIN);
+}
+function edgeDist(b) { return Math.min(b.x, W - b.x, b.y, H - b.y); }
+
+/* =====================================================================
+   4. RENDERING: shape helpers, pens, props
+   ===================================================================== */
+function rr(c, x, y, w, h, rl, rrt) { // rounded rect path; rl = left corner radius, rrt = right corner radius
+  if (rrt === undefined) rrt = rl;
+  rl = Math.min(rl, h / 2, w / 2); rrt = Math.min(rrt, h / 2, w / 2);
+  c.beginPath();
+  c.moveTo(x + rl, y); c.lineTo(x + w - rrt, y); c.arcTo(x + w, y, x + w, y + rrt, rrt); c.lineTo(x + w, y + h - rrt);
+  c.arcTo(x + w, y + h, x + w - rrt, y + h, rrt); c.lineTo(x + rl, y + h); c.arcTo(x, y + h, x, y + h - rl, rl);
+  c.lineTo(x, y + rl); c.arcTo(x, y, x + rl, y, rl); c.closePath();
+}
+function cylGrad(c, r, col) {
+  const g = c.createLinearGradient(0, -r, 0, r);
+  g.addColorStop(0, shade(col, .5)); g.addColorStop(.28, col); g.addColorStop(.72, shade(col, -.2)); g.addColorStop(1, shade(col, -.45));
+  return g;
+}
+function cyl(c, xa, xb, r, col, rl = 2, rrt = rl) { c.fillStyle = cylGrad(c, r, col); rr(c, xa, -r, xb - xa, 2 * r, rl, rrt); c.fill(); }
+function cone(c, xa, xb, r, rt, col) {
+  c.fillStyle = cylGrad(c, r, col); c.beginPath(); c.moveTo(xa, -r); c.lineTo(xb, -rt); c.lineTo(xb, rt); c.lineTo(xa, r); c.closePath(); c.fill();
+}
+function ridges(c, xa, xb, r, step, col) {
+  c.strokeStyle = col; c.lineWidth = 1; c.beginPath();
+  for (let x = xa; x <= xb; x += step) { c.moveTo(x, -r + 1); c.lineTo(x, r - 1); }
+  c.stroke();
+}
+function gloss(c, xa, xb, r, alpha = .55) { c.fillStyle = `rgba(255,255,255,${alpha})`; rr(c, xa, -r * .66, xb - xa, r * .3, r * .15); c.fill(); }
+function clipBar(c, xa, xb, r, col) {
+  c.fillStyle = 'rgba(0,0,0,.28)'; rr(c, xa + 1, -r * .12, xb - xa, r * .55, r * .25); c.fill();
+  const g = c.createLinearGradient(0, -r * .42, 0, r * .1);
+  g.addColorStop(0, shade(col, .55)); g.addColorStop(.5, col); g.addColorStop(1, shade(col, -.35));
+  c.fillStyle = g; rr(c, xa, -r * .42, xb - xa, r * .52, r * .26); c.fill();
+  c.beginPath(); c.arc(xb - r * .2, -r * .16, r * .34, 0, TAU); c.fill();
+}
+function capsulePath(c, hl, r) { rr(c, -hl - r, -r, 2 * hl + 2 * r, 2 * r, r); }
+
+// Draws a pen centred on the origin, lying along +x with its tip to the right. sk = shadow scale in device px.
+function drawPen(c, def, sk = 1) {
+  const L = def.len, r = def.rad, x0 = -L / 2, x1 = L / 2, tip = r * 2.4;
+  c.save();
+  c.shadowColor = 'rgba(40,20,5,.42)'; c.shadowBlur = 7 * sk; c.shadowOffsetX = 3 * sk; c.shadowOffsetY = 5 * sk;
+  c.fillStyle = def.color; rr(c, x0 + 1, -r + .5, L - tip, 2 * r - 1, r, 3); c.fill();
+  c.restore();
+  const std = o => { // a regular capped pen
+    const capLen = o.capLen || L * .3, gripLen = o.grip ? 30 : 0;
+    cone(c, x1 - tip - 1, x1, r * .92, r * .16, o.tip || '#c9a44a');
+    cyl(c, x0 + 5, x1 - tip, r, o.body, 2);
+    if (o.ink) { c.fillStyle = o.ink; rr(c, x0 + capLen - 4, -r * .3, L - capLen - tip - 2, r * .6, r * .3); c.fill(); }
+    if (o.grip) { cyl(c, x1 - tip - gripLen, x1 - tip, r * 1.05, o.grip, 3); ridges(c, x1 - tip - gripLen + 4, x1 - tip - 4, r, 4, 'rgba(0,0,0,.28)'); }
+    cyl(c, x0, x0 + capLen, r * 1.1, o.cap, r, 2);
+    c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x0 + capLen - 1.5, -r * 1.1, 1.5, r * 2.2);
+    clipBar(c, x0 + 5, x0 + capLen + 12, r, o.clip || o.cap);
+    gloss(c, x0 + capLen + 16, x1 - tip - gripLen - 5, r, o.gloss === undefined ? .55 : o.gloss);
+  };
+  switch (def.id) {
+    case 'classic':
+      std({ body: '#f5f4ee', cap: '#2456b8', ink: 'rgba(36,86,184,.28)', tip: '#c9a44a' });
+      cyl(c, x1 - tip - 9, x1 - tip, r, '#2456b8', 1);
+      break;
+    case 'metal':
+      cone(c, x1 - tip - 1, x1, r * .9, r * .2, '#8e969e');
+      cyl(c, x0 + 9, x1 - tip, r, '#b3bac1', 3);
+      cyl(c, x0, x0 + 11, r * .58, '#8e969e', 3, 1);
+      c.save(); rr(c, x1 - tip - 34, -r, 34, 2 * r, 2); c.clip(); c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = .8; c.beginPath();
+      for (let x = x1 - tip - 44; x < x1 - tip + 10; x += 4) { c.moveTo(x, -r); c.lineTo(x + 2 * r, r); c.moveTo(x + 2 * r, -r); c.lineTo(x, r); }
+      c.stroke(); c.restore();
+      for (const x of [x0 + 46, x1 - tip - 38]) { c.fillStyle = 'rgba(40,46,52,.6)'; c.fillRect(x, -r, 2.5, 2 * r); }
+      clipBar(c, x0 + 12, x0 + 62, r, '#d9dfe4'); gloss(c, x0 + 66, x1 - tip - 42, r, .7);
+      break;
+    case 'gel':
+      std({ body: '#ffd9e8', cap: '#f7a8c4', ink: '#e0457b', grip: '#e0457b', tip: '#c5ccd3', clip: '#e0457b' });
+      break;
+    case 'fat4': {
+      cone(c, x1 - tip * .8, x1, r * .7, r * .14, '#c5ccd3');
+      cyl(c, x0, x1 - tip * .8 + 1, r, '#f4f6f8', r * .7, 5);
+      cyl(c, -4, x1 - tip * .8 + 1, r, '#3b6fd4', 1, 5);
+      const cols = ['#2456b8', '#d0352f', '#2f9a4a', '#2b2b2b'];
+      cols.forEach((col, i) => { c.fillStyle = col; rr(c, x0 + 12 + (i % 2) * 5, -r * .78 + i * r * .42, 15, r * .3, 2); c.fill(); });
+      clipBar(c, x0 + 6, x0 + 56, r * .8, '#cfd6dc'); gloss(c, x0 + 60, x1 - tip - 6, r, .5);
+      break; }
+    case 'pencil': {
+      const tl = r * 3.2;
+      cone(c, x1 - tl, x1 - tl * .3, r, r * .32, '#e9cba2');
+      c.fillStyle = '#3d3d42'; c.beginPath(); c.moveTo(x1 - tl * .32, -r * .34); c.lineTo(x1, 0); c.lineTo(x1 - tl * .32, r * .34); c.closePath(); c.fill();
+      cyl(c, x0 + 22, x1 - tl + 1, r, '#f0bd2c', 0);
+      c.strokeStyle = 'rgba(120,80,0,.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x0 + 22, -r * .36); c.lineTo(x1 - tl, -r * .36); c.moveTo(x0 + 22, r * .36); c.lineTo(x1 - tl, r * .36); c.stroke();
+      c.fillStyle = 'rgba(30,30,30,.55)'; c.font = `700 ${r * .9}px sans-serif`; c.fillText('HB 2', x0 + 40, r * .3);
+      cyl(c, x0 + 11, x0 + 23, r * 1.04, '#c7cdd3', 0); ridges(c, x0 + 14, x0 + 21, r, 3, 'rgba(0,0,0,.3)');
+      cyl(c, x0, x0 + 12, r, '#ee8ea2', r * .7, 0);
+      gloss(c, x0 + 26, x1 - tl - 4, r, .4);
+      break; }
+    case 'chewed': {
+      const capLen = L * .3;
+      cone(c, x1 - tip - 1, x1, r * .92, r * .16, '#c9a44a');
+      cyl(c, x0 + 10, x1 - tip, r, '#e9f2f4', 2);
+      c.fillStyle = 'rgba(20,110,90,.3)'; rr(c, x0 + capLen, -r * .3, L - capLen - tip - 2, r * .6, r * .3); c.fill();
+      c.fillStyle = cylGrad(c, r * 1.1, '#1c8c6c'); c.beginPath(); // bitten cap end
+      const R = r * 1.1; c.moveTo(x0 + capLen, -R); c.lineTo(x0 + 9, -R); c.lineTo(x0 + 3, -R * .55); c.lineTo(x0 + 8, -R * .2); c.lineTo(x0 + 1, R * .15); c.lineTo(x0 + 7, R * .5); c.lineTo(x0 + 4, R); c.lineTo(x0 + capLen, R); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.2;
+      for (const [bx, by] of [[x0 + 14, -R * .3], [x0 + 20, R * .35], [x0 + 27, -R * .1]]) { c.beginPath(); c.arc(bx, by, 3, .3, 2.4); c.stroke(); }
+      clipBar(c, x0 + 16, x0 + capLen + 12, r, '#1c8c6c'); gloss(c, x0 + capLen + 16, x1 - tip - 5, r);
+      break; }
+    case 'space': {
+      cone(c, x1 - tip - 1, x1, r * .9, r * .18, '#cfd6dd');
+      cyl(c, x0, x1 - tip, r, '#232a66', r, 3);
+      cyl(c, x0 + 8, x0 + 14, r * 1.03, '#cfd6dd', 1); cyl(c, x1 - tip - 8, x1 - tip - 2, r * 1.03, '#cfd6dd', 1);
+      c.fillStyle = '#fff';
+      for (const [sx, sy, ss] of [[-52, -3, 1.1], [-40, 3, .8], [-26, -1, 1], [34, 3, .9], [44, -3, 1.1], [-12, 4, .7], [26, -4, .7]]) { c.beginPath(); c.arc(sx, sy, ss, 0, TAU); c.fill(); }
+      c.fillStyle = '#ff9d2e'; c.beginPath(); c.moveTo(-8, -2.4); c.lineTo(-17, 0); c.lineTo(-8, 2.4); c.closePath(); c.fill(); // flame
+      c.fillStyle = '#e6402f'; c.beginPath(); c.moveTo(-8, -r * .7); c.lineTo(-2, -r * .34); c.lineTo(-8, 0); c.lineTo(-2, r * .34); c.lineTo(-8, r * .7); c.closePath(); c.fill(); // fins
+      c.fillStyle = '#f4f6f8'; rr(c, -8, -r * .36, 20, r * .72, 2); c.fill();
+      c.fillStyle = '#e6402f'; c.beginPath(); c.moveTo(12, -r * .36); c.lineTo(20, 0); c.lineTo(12, r * .36); c.closePath(); c.fill();
+      c.fillStyle = '#5fb7ef'; c.beginPath(); c.arc(5, 0, 1.7, 0, TAU); c.fill();
+      clipBar(c, x0 + 16, x0 + 58, r, '#cfd6dd'); gloss(c, x0 + 62, x1 - tip - 12, r, .35);
+      break; }
+    case 'fountain': {
+      const nl = r * 3;
+      c.fillStyle = cylGrad(c, r * .8, '#d9aa3a'); c.beginPath(); c.moveTo(x1 - nl, -r * .78); c.quadraticCurveTo(x1 - nl * .35, -r * .7, x1, 0); c.quadraticCurveTo(x1 - nl * .35, r * .7, x1 - nl, r * .78); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(70,45,0,.75)'; c.lineWidth = .9; c.beginPath(); c.moveTo(x1 - nl * .62, 0); c.lineTo(x1 - 1, 0); c.stroke();
+      c.fillStyle = 'rgba(70,45,0,.75)'; c.beginPath(); c.arc(x1 - nl * .62, 0, 1.3, 0, TAU); c.fill();
+      cyl(c, x0 + 40, x1 - nl + 2, r * .9, '#25252c', 2);
+      cyl(c, x0, x0 + L * .42, r * 1.1, '#1b1b21', r, 2);
+      for (const x of [x0 + L * .42 - 5, x0 + 9]) cyl(c, x, x + 4, r * 1.12, '#d9aa3a', 1);
+      clipBar(c, x0 + 14, x0 + L * .42 + 6, r, '#d9aa3a'); gloss(c, x0 + L * .42 + 12, x1 - nl - 4, r * .9, .3); gloss(c, x0 + 16, x0 + L * .42 - 10, r * 1.6, .16);
+      break; }
+    case 'scented': {
+      std({ body: '#e6d4fb', cap: '#9a5fe0', ink: '#7b3fc4', grip: '#b47cf0', tip: '#c5ccd3', clip: '#7b3fc4' });
+      const rg = mulberry(7), gc = ['#ffe04a', '#ff7eb6', '#7ee0ff', '#fff'];
+      for (let i = 0; i < 22; i++) { c.fillStyle = gc[i % 4]; c.beginPath(); c.arc(lerp(x0 + 50, x1 - 50, rg()), (rg() - .5) * r * 1.4, .9, 0, TAU); c.fill(); }
+      c.fillStyle = '#ffb3d1'; for (let i = 0; i < 5; i++) { const an = i * TAU / 5; c.beginPath(); c.arc(x0 + 24 + Math.cos(an) * 3.2, r * .35 + Math.sin(an) * 3.2, 2.3, 0, TAU); c.fill(); }
+      c.fillStyle = '#ffe04a'; c.beginPath(); c.arc(x0 + 24, r * .35, 1.8, 0, TAU); c.fill();
+      break; }
+    case 'ten': {
+      cone(c, x1 - tip * .7, x1, r * .6, r * .12, '#c5ccd3');
+      cyl(c, x0, x1 - tip * .7 + 1, r, '#f6f6f2', r * .6, 6);
+      const cols = ['#d0352f', '#f08a24', '#f2c230', '#8cc63f', '#2f9a4a', '#22a7b8', '#2456b8', '#7b3fc4', '#e0457b', '#2b2b2b'];
+      c.save(); rr(c, x0 + 10, -r, 40, 2 * r, 2); c.clip();
+      cols.forEach((col, i) => { c.fillStyle = col; c.fillRect(x0 + 10, -r + i * (2 * r / 10), 40, 2 * r / 10 + .5); });
+      const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, 'rgba(255,255,255,.45)'); g.addColorStop(.4, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,.35)'); c.fillStyle = g; c.fillRect(x0 + 10, -r, 40, 2 * r);
+      c.restore();
+      cols.forEach((col, i) => { c.fillStyle = col; c.globalAlpha = .55; c.fillRect(x0 + 58, -r * .8 + i * (r * 1.6 / 10), L - 58 - tip - 14, 1.1); c.globalAlpha = 1; });
+      cyl(c, x1 - tip * .7 - 16, x1 - tip * .7 + 1, r, '#e8553a', 1, 6);
+      gloss(c, x0 + 56, x1 - tip - 14, r, .5);
+      break; }
+    case 'topper':
+      std({ body: '#7a1730', cap: '#7a1730', tip: '#e2b84a', clip: '#f0c64f', gloss: .35 });
+      for (const x of [x0 + L * .3 - 3, x0 + L * .3 + 5, x1 - tip - 6]) cyl(c, x, x + 3.5, r * 1.08, '#e2b84a', 1);
+      c.fillStyle = '#f0c64f'; c.beginPath();
+      for (let i = 0; i < 10; i++) { const an = i * TAU / 10 - Math.PI / 2, rad = i % 2 ? 1.6 : 3.8; c.lineTo(20 + Math.cos(an) * rad, r * .2 + Math.sin(an) * rad); }
+      c.closePath(); c.fill();
+      break;
+  }
+}
+
+function drawProp(c, b, sk) {
+  const id = b.def.id;
+  c.save();
+  c.shadowColor = 'rgba(40,20,5,.4)'; c.shadowBlur = 8 * sk; c.shadowOffsetX = 3 * sk; c.shadowOffsetY = 5 * sk;
+  const noShadow = () => { c.shadowColor = 'transparent'; };
+  if (id === 'eraser') {
+    let g = c.createLinearGradient(0, -14, 0, 14); g.addColorStop(0, '#fffefa'); g.addColorStop(1, '#dcd8cc');
+    c.fillStyle = g; rr(c, -22, -14, 44, 28, 5); c.fill(); noShadow();
+    g = c.createLinearGradient(0, -14, 0, 14); g.addColorStop(0, '#5a8fe0'); g.addColorStop(1, '#2f5fb0');
+    c.fillStyle = g; rr(c, 2, -14, 20, 28, 1, 5); c.fill();
+    c.fillStyle = 'rgba(90,90,95,.25)'; c.beginPath(); c.arc(-10, -1, 6.5, 0, TAU); c.fill();
+    c.fillStyle = '#2c2c30'; c.beginPath(); c.arc(-10, -1, 3, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(120,120,125,.3)'; c.fillRect(-21, 8, 12, 3);
+  } else if (id === 'coin') {
+    let g = c.createRadialGradient(-4, -4, 1, 0, 0, 13); g.addColorStop(0, '#f6e7a6'); g.addColorStop(.7, '#d2ac4a'); g.addColorStop(1, '#9c7a24');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, 13, 0, TAU); c.fill(); noShadow();
+    c.strokeStyle = 'rgba(110,80,10,.6)'; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, 10, 0, TAU); c.stroke();
+    c.fillStyle = 'rgba(100,70,5,.75)'; c.font = '700 13px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('5', 0, 1);
+  } else if (id === 'paper') {
+    const pts = [[19, -3], [14, -14], [3, -20], [-9, -17], [-18, -9], [-20, 3], [-14, 14], [-3, 19], [9, 18], [17, 10]];
+    c.fillStyle = '#f3f1e8'; c.beginPath(); pts.forEach(p => c.lineTo(p[0], p[1])); c.closePath(); c.fill(); noShadow();
+    c.fillStyle = 'rgba(120,115,100,.18)'; c.beginPath(); c.moveTo(-20, 3); c.lineTo(-3, 2); c.lineTo(9, 18); c.lineTo(-3, 19); c.lineTo(-14, 14); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(120,115,100,.1)'; c.beginPath(); c.moveTo(19, -3); c.lineTo(4, -6); c.lineTo(-3, 2); c.lineTo(9, 18); c.lineTo(17, 10); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(110,105,90,.45)'; c.lineWidth = .8; c.beginPath();
+    for (const [x1, y1, x2, y2] of [[4, -6, 14, -14], [4, -6, -9, -17], [4, -6, -3, 2], [-3, 2, -18, -9], [-3, 2, 9, 18], [4, -6, 19, -3], [-3, 2, -14, 14]]) { c.moveTo(x1, y1); c.lineTo(x2, y2); }
+    c.stroke();
+    c.strokeStyle = 'rgba(80,110,190,.35)'; c.beginPath(); c.moveTo(-12, -8); c.lineTo(0, -12); c.moveTo(6, 6); c.lineTo(13, 4); c.stroke();
+  } else if (id === 'shaving') {
+    const R = b.r + 1;
+    c.fillStyle = '#ecd0a4'; c.beginPath(); c.moveTo(0, 0);
+    for (let i = 0; i <= 5; i++) { const an = -1.2 + i * .48; c.quadraticCurveTo(Math.cos(an - .24) * (R + 2.5), Math.sin(an - .24) * (R + 2.5), Math.cos(an) * R, Math.sin(an) * R); }
+    c.closePath(); c.fill(); noShadow();
+    c.strokeStyle = '#d2452f'; c.lineWidth = 1.4; c.beginPath();
+    for (let i = 0; i <= 5; i++) { const an = -1.2 + i * .48; if (!i) c.moveTo(Math.cos(an) * R, Math.sin(an) * R); else c.quadraticCurveTo(Math.cos(an - .24) * (R + 2.5), Math.sin(an - .24) * (R + 2.5), Math.cos(an) * R, Math.sin(an) * R); }
+    c.stroke();
+    c.strokeStyle = 'rgba(150,100,50,.4)'; c.lineWidth = .6; c.beginPath();
+    for (let i = 1; i < 5; i++) { const an = -1.2 + i * .48; c.moveTo(0, 0); c.lineTo(Math.cos(an) * R, Math.sin(an) * R); }
+    c.stroke();
+  } else if (id === 'ruler') {
+    const g = c.createLinearGradient(0, -10, 0, 10); g.addColorStop(0, '#f0d39c'); g.addColorStop(1, '#d2ab6b');
+    c.fillStyle = g; c.beginPath(); c.moveTo(-115, -10); c.lineTo(108, -10); // chewed right end
+    c.lineTo(113, -6); c.lineTo(108, -3); c.lineTo(115, 1); c.lineTo(109, 5); c.lineTo(113, 10); c.lineTo(-115, 10); c.closePath(); c.fill(); noShadow();
+    c.strokeStyle = 'rgba(70,45,15,.7)'; c.lineWidth = .7; c.beginPath();
+    for (let i = 0; i <= 75; i++) { const x = -110 + i * 2.8; c.moveTo(x, -10); c.lineTo(x, i % 5 ? -6.5 : -3.5); }
+    c.stroke();
+    c.fillStyle = 'rgba(70,45,15,.8)'; c.font = '600 6.5px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (let i = 0; i <= 15; i++) c.fillText(i, -110 + i * 14, 2);
+    c.strokeStyle = 'rgba(110,70,30,.5)'; c.lineWidth = 1; for (const [bx, by] of [[100, -4], [96, 4], [103, 6]]) { c.beginPath(); c.arc(bx, by, 2.4, .4, 2.6); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(-114, 6, 220, 1.5);
+  } else if (id === 'geobox') {
+    let g = c.createLinearGradient(0, -38, 0, 38); g.addColorStop(0, '#e3e7eb'); g.addColorStop(1, '#aab2ba');
+    c.fillStyle = g; rr(c, -76, -38, 152, 76, 13); c.fill(); noShadow();
+    c.fillStyle = '#7d8790'; rr(c, -70, -32, 140, 64, 8); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.2)'; rr(c, -70, -32, 140, 10, 8, 8); c.fill();
+    // instruments peeking out
+    c.strokeStyle = '#d9dee3'; c.lineWidth = 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(-52, 24); c.lineTo(-10, 6); c.moveTo(-52, 24); c.lineTo(-6, 22); c.stroke();
+    c.fillStyle = '#f0bd2c'; c.beginPath(); c.arc(-52, 24, 4, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(210,235,255,.85)'; c.lineWidth = 2; c.beginPath(); c.arc(36, 28, 22, Math.PI, TAU); c.closePath(); c.stroke();
+    c.fillStyle = 'rgba(190,225,255,.3)'; c.fill();
+    // lid, slid half open
+    c.save(); c.translate(-6, -30); c.rotate(-.09);
+    c.shadowColor = 'rgba(30,15,5,.45)'; c.shadowBlur = 9 * sk; c.shadowOffsetX = 4 * sk; c.shadowOffsetY = 7 * sk;
+    g = c.createLinearGradient(0, -38, 0, 38); g.addColorStop(0, '#e2574c'); g.addColorStop(1, '#b23027');
+    c.fillStyle = g; rr(c, -76, -38, 152, 76, 13); c.fill(); c.shadowColor = 'transparent';
+    c.fillStyle = '#ffd95e'; rr(c, -62, -18, 124, 34, 5); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; rr(c, -72, -34, 144, 68, 10); c.stroke();
+    c.fillStyle = '#8f1f18'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '800 15px "Baloo 2", sans-serif'; c.fillText('GEOMETRY BOX', 0, -5);
+    c.font = '600 8px "Baloo 2", sans-serif'; c.fillText('MATHEMATICAL INSTRUMENTS', 0, 8);
+    c.restore();
+  }
+  c.restore();
+}
+
+/* =====================================================================
+   5. RENDERING: desk texture, scene, effects
+   ===================================================================== */
+const cv = $('game'), ctx = cv.getContext('2d');
+const view = { cw: 0, ch: 0, dpr: 1, s: 1, cx: 0, cy: 0, rot: 0 };
+const deskCv = document.createElement('canvas');
+let deskK = 0;
+
+function buildDesk() {
+  const k = Math.min(2.6, Math.max(.6, view.s * view.dpr));
+  deskK = k;
+  deskCv.width = Math.ceil((W + 2 * DESK_PAD) * k); deskCv.height = Math.ceil((H + 2 * DESK_PAD) * k);
+  const c = deskCv.getContext('2d'), R = mulberry(20261112);
+  c.setTransform(k, 0, 0, k, DESK_PAD * k, DESK_PAD * k);
+  // shadow on the floor, then the dark edge where the desk falls away
+  c.save(); c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 34 * k; c.shadowOffsetX = 10 * k; c.shadowOffsetY = 20 * k;
+  c.fillStyle = '#4a2c14'; rr(c, -11, -11, W + 22, H + 22, 18); c.fill(); c.restore();
+  let g = c.createLinearGradient(0, -11, 0, H + 11); g.addColorStop(0, '#6b4222'); g.addColorStop(1, '#3d2410');
+  c.fillStyle = g; rr(c, -11, -11, W + 22, H + 22, 18); c.fill();
+  // top surface
+  c.save(); rr(c, 0, 0, W, H, 9); c.clip();
+  g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#d9a468'); g.addColorStop(.5, '#c98f52'); g.addColorStop(1, '#b67c42');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const planks = [0, 205, 398, H];
+  for (let i = 0; i < 3; i++) { c.fillStyle = `rgba(${i === 1 ? '255,225,170' : '90,45,10'},${.05 + R() * .04})`; c.fillRect(0, planks[i], W, planks[i + 1] - planks[i]); }
+  for (let i = 0; i < 230; i++) { // grain
+    let y = R() * H; const light = R() < .3, amp = 1 + R() * 5, ph = R() * 9, fr = .004 + R() * .01;
+    c.strokeStyle = light ? `rgba(255,228,180,${.05 + R() * .08})` : `rgba(96,52,18,${.05 + R() * .13})`; c.lineWidth = .5 + R() * 1.7;
+    c.beginPath(); const xs = R() * 300 - 150, xe = W - R() * 300 + 150;
+    for (let x = xs; x <= xe; x += 24) { const yy = y + Math.sin(x * fr + ph) * amp; x === xs ? c.moveTo(x, yy) : c.lineTo(x, yy); }
+    c.stroke();
+  }
+  for (const [kx, ky, kr] of [[690, 320, 17], [205, 440, 12], [420, 118, 9]]) { // knots
+    for (let i = 6; i > 0; i--) { c.strokeStyle = `rgba(80,42,14,${.1 + (6 - i) * .035})`; c.lineWidth = 1.3; c.beginPath(); c.ellipse(kx, ky, kr * i / 2.6, kr * i / 4.4, .08, 0, TAU); c.stroke(); }
+    c.fillStyle = 'rgba(70,36,12,.5)'; c.beginPath(); c.ellipse(kx, ky, kr * .42, kr * .26, .08, 0, TAU); c.fill();
+  }
+  for (let i = 0; i < 7000; i++) { c.fillStyle = R() < .5 ? 'rgba(60,30,8,.07)' : 'rgba(255,235,200,.07)'; c.fillRect(R() * W, R() * H, 1 + R() * 1.6, .8 + R()); } // noise
+  for (const y of [205, 398]) { c.fillStyle = 'rgba(60,30,8,.45)'; c.fillRect(0, y, W, 1.4); c.fillStyle = 'rgba(255,230,180,.25)'; c.fillRect(0, y + 1.4, W, 1); }
+  // ink blot stain
+  const blot = (x, y, r0, col) => { c.fillStyle = col; const br = mulberry(x * 7 + y); c.beginPath(); for (let i = 0; i <= 18; i++) { const an = i / 18 * TAU, rad = r0 * (.72 + br() * .5); i ? c.lineTo(x + Math.cos(an) * rad, y + Math.sin(an) * rad) : c.moveTo(x + Math.cos(an) * rad, y + Math.sin(an) * rad); } c.closePath(); c.fill(); };
+  blot(690, 165, 30, 'rgba(24,34,96,.32)'); blot(687, 162, 20, 'rgba(18,26,84,.42)');
+  for (const [dx, dy, rad] of [[40, -22, 5], [-36, 20, 4], [30, 30, 3], [-44, -14, 2.5], [52, 6, 2]]) { c.fillStyle = 'rgba(20,30,90,.4)'; c.beginPath(); c.arc(690 + dx, 165 + dy, rad, 0, TAU); c.fill(); }
+  drawCarvings(c);
+  // worn, lighter edges
+  for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, 22, 0, 0, W, 22], [0, H, 0, H - 22, 0, H - 22, W, 22], [0, 0, 22, 0, 0, 0, 22, H], [W, 0, W - 22, 0, W - 22, 0, 22, H]]) {
+    g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(255,236,196,.42)'); g.addColorStop(1, 'rgba(255,236,196,0)'); c.fillStyle = g; c.fillRect(rx, ry, rw, rh);
+  }
+  c.restore();
+  c.strokeStyle = 'rgba(255,240,205,.5)'; c.lineWidth = 1.6; rr(c, .8, .8, W - 1.6, H - 1.6, 9); c.stroke();
+}
+
+function drawCarvings(c) {
+  const scratch = (fn, a = .42) => { // dark groove with a light lip, like a compass scratch
+    c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+    c.translate(.9, .9); c.strokeStyle = c.fillStyle = `rgba(255,232,190,${a * .55})`; c.lineWidth = 1.5; fn();
+    c.translate(-.9, -.9); c.strokeStyle = c.fillStyle = `rgba(58,30,8,${a})`; fn(); c.restore();
+  };
+  const text = (s, x, y, size, rot = 0) => scratch(() => { c.save(); c.translate(x, y); c.rotate(rot); c.font = `${size}px "Patrick Hand", cursive`; c.fillText(s, 0, 0); c.restore(); }, .5);
+  text('Exams =', 318, 66, 30, -.05);
+  c.save(); c.globalAlpha = .5; c.font = '26px sans-serif'; c.translate(412, 66); c.rotate(-.05); c.fillText('😭', 0, 0); c.restore();
+  text('IND 287/4', 716, 566, 28, .03); text('(38.2 ov)', 838, 568, 17, .03);
+  scratch(() => { // noughts and crosses
+    c.beginPath(); for (const o of [22, 44]) { c.moveTo(430 + o, 470); c.lineTo(431 + o, 538); c.moveTo(430, 470 + o); c.lineTo(498, 471 + o); } c.stroke();
+    const X = (x, y) => { c.beginPath(); c.moveTo(x - 6, y - 6); c.lineTo(x + 6, y + 6); c.moveTo(x + 6, y - 6); c.lineTo(x - 6, y + 6); c.stroke(); };
+    const O = (x, y) => { c.beginPath(); c.arc(x, y, 6.5, 0, TAU); c.stroke(); };
+    X(441, 481); O(464, 504); X(487, 481); O(441, 527); X(464, 481 + 46); O(487, 504);
+  });
+  scratch(() => { // hangman in progress
+    c.beginPath(); c.moveTo(880, 420); c.lineTo(936, 420); c.moveTo(894, 420); c.lineTo(894, 338); c.lineTo(930, 338); c.lineTo(930, 350); c.stroke();
+    c.beginPath(); c.arc(930, 358, 8, 0, TAU); c.stroke();
+    c.beginPath(); c.moveTo(930, 366); c.lineTo(930, 392); c.moveTo(930, 374); c.lineTo(918, 384); c.stroke();
+  });
+  text('_ A T H _', 872, 446, 20);
+  scratch(() => { // compass smiley
+    c.beginPath(); c.arc(62, 262, 22, 0, TAU); c.stroke();
+    c.beginPath(); c.arc(62, 265, 12, .25, Math.PI - .25); c.stroke();
+    c.beginPath(); c.arc(54, 255, 2, 0, TAU); c.fill(); c.beginPath(); c.arc(70, 255, 2, 0, TAU); c.fill();
+  });
+  text('A + R', 590, 60, 20, .08);
+}
+
+function resize() {
+  const small = Math.min(window.innerWidth, window.innerHeight) < 560;
+  view.dpr = Math.min(window.devicePixelRatio || 1, small ? 2 : 2.5);
+  view.cw = window.innerWidth; view.ch = window.innerHeight;
+  cv.width = Math.round(view.cw * view.dpr); cv.height = Math.round(view.ch * view.dpr);
+  const boardH = $('board').getBoundingClientRect().height || 70;
+  const availW = view.cw - 12, availH = view.ch - boardH - 12;
+  const portrait = availH > availW * 1.08;
+  const mg = small ? MARGIN_SMALL : MARGIN, ww = W + 2 * mg, wh = H + 2 * mg;
+  view.rot = portrait ? -Math.PI / 2 : 0; // on upright phones the desk turns, Player 1 at the bottom
+  view.s = portrait ? Math.min(availW / wh, availH / ww) : Math.min(availW / ww, availH / wh);
+  view.cx = view.cw / 2; view.cy = boardH + 6 + availH / 2;
+  buildDesk();
+  const fx = $('fx'); fx.width = Math.round(view.cw * view.dpr); fx.height = Math.round(view.ch * view.dpr);
+}
+function toWorld(sx, sy) {
+  const dx = (sx - view.cx) / view.s, dy = (sy - view.cy) / view.s, c = Math.cos(view.rot), s = Math.sin(view.rot);
+  return { x: dx * c + dy * s + W / 2, y: -dx * s + dy * c + H / 2 };
+}
+function toScreen(wx, wy) {
+  const x = (wx - W / 2) * view.s, y = (wy - H / 2) * view.s, c = Math.cos(view.rot), s = Math.sin(view.rot);
+  return { x: x * c - y * s + view.cx, y: x * s + y * c + view.cy };
+}
+
+// Ambient effects
+const motes = Array.from({ length: 48 }, () => ({ x: Math.random(), y: Math.random(), vx: rand(.004, .014), vy: rand(-.006, .004), r: rand(.6, 2.2), ph: rand(TAU) }));
+function addParticles(type, x, y, n, power = 1) {
+  for (let i = 0; i < n; i++) {
+    const an = rand(TAU), sp = rand(20, 110) * power;
+    G.particles.push({ type, x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 0, max: rand(.35, .75), size: rand(3, 8) * (type === 'dust' ? 1 : .5), col: type === 'spark' ? pick(['#ffe04a', '#ff7eb6', '#7ee0ff', '#fff']) : null });
+  }
+}
+function addInk(x, y, power) {
+  const blobs = []; const n = 4 + Math.floor(rand(4));
+  for (let i = 0; i < n; i++) { const an = rand(TAU), d = i ? rand(4, 20) * power : 0; blobs.push([Math.cos(an) * d, Math.sin(an) * d, i ? rand(1.5, 5) * power : rand(6, 10) * power]); }
+  G.inks.push({ x, y, blobs }); if (G.inks.length > 40) G.inks.shift();
+}
+
+function drawBody(c, b, sk) {
+  c.save(); c.translate(b.x, b.y); c.rotate(b.a);
+  if (b.falling) { // tip over the edge, shrink and fade, shadow drifting away
+    const t = clamp(b.fallT, 0, 1), sc = 1 - .62 * t * t;
+    c.globalAlpha = 1 - t * t; c.scale(sc, sc * (1 - .35 * Math.sin(t * Math.PI))); sk *= 1 + 5 * t;
+  }
+  if (b.kind === 'pen') drawPen(c, b.def, sk); else drawProp(c, b, sk);
+  c.restore();
+}
+
+function render(dt) {
+  const c = ctx, { cw, ch, dpr, s } = view, t = G.time;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // classroom floor
+  let g = c.createRadialGradient(view.cx, view.cy, 40, view.cx, view.cy, Math.max(cw, ch) * .75);
+  g.addColorStop(0, '#6a6052'); g.addColorStop(1, '#2b2721'); c.fillStyle = g; c.fillRect(0, 0, cw, ch);
+  c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 2; c.beginPath();
+  for (let x = view.cx % 150; x < cw; x += 150) { c.moveTo(x, 0); c.lineTo(x, ch); }
+  for (let y = view.cy % 150; y < ch; y += 150) { c.moveTo(0, y); c.lineTo(cw, y); }
+  c.stroke();
+
+  const shx = G.shake ? (Math.random() - .5) * 2 * G.shake : 0, shy = G.shake ? (Math.random() - .5) * 2 * G.shake : 0;
+  c.save();
+  c.translate(view.cx + shx, view.cy + shy); c.rotate(view.rot); c.scale(s, s); c.translate(-W / 2, -H / 2);
+  const sk = s * dpr;
+  // things that have dropped below the desk edge
+  for (const b of G.bodies) if (b.falling && !b.dead && b.fallT > .3) drawBody(c, b, sk);
+  c.drawImage(deskCv, -DESK_PAD, -DESK_PAD, W + 2 * DESK_PAD, H + 2 * DESK_PAD);
+  // fountain-pen ink
+  for (const ink of G.inks) { c.fillStyle = 'rgba(18,26,92,.7)'; for (const [dx, dy, r] of ink.blobs) { c.beginPath(); c.arc(ink.x + dx, ink.y + dy, r, 0, TAU); c.fill(); } }
+  // ceiling fan shadow sweeping slowly
+  c.save(); c.translate(W * .42, H * .34); c.rotate(t * .42);
+  for (let pass = 0; pass < 3; pass++) {
+    c.fillStyle = 'rgba(30,18,6,.035)';
+    for (let i = 0; i < 3; i++) { c.save(); c.rotate(i * TAU / 3 + (pass - 1) * .035); c.beginPath(); c.moveTo(50, -38); c.lineTo(900, -95); c.lineTo(900, 95); c.lineTo(50, 38); c.closePath(); c.fill(); c.restore(); }
+  }
+  c.fillStyle = 'rgba(30,18,6,.07)'; c.beginPath(); c.arc(0, 0, 62, 0, TAU); c.fill(); c.restore();
+  // props, then trails and pens
+  for (const b of G.bodies) if (b.kind === 'prop' && !b.dead && !(b.falling && b.fallT > .3)) drawBody(c, b, sk);
+  for (const tr of G.trails) { c.save(); c.translate(tr.x, tr.y); c.rotate(tr.a); c.globalAlpha = tr.al * .22; c.fillStyle = tr.col; capsulePath(c, tr.hl, tr.r); c.fill(); c.restore(); }
+  const cur = G.pens[G.turn];
+  if (G.state === 'aim' && cur && !cur.falling) { // the pen whose turn it is glows
+    const pulse = .5 + .5 * Math.sin(t * 5);
+    c.save(); c.translate(cur.x, cur.y); c.rotate(cur.a);
+    c.shadowColor = P_COL[G.turn]; c.shadowBlur = (12 + 12 * pulse) * sk; c.strokeStyle = P_COL[G.turn]; c.globalAlpha = .55 + .4 * pulse; c.lineWidth = 3 + 2 * pulse;
+    capsulePath(c, cur.hl + 2, cur.r + 4 + 2 * pulse); c.stroke(); c.restore();
+  }
+  for (const b of G.pens) if (b && !b.dead && !(b.falling && b.fallT > .3)) drawBody(c, b, sk);
+  // afternoon sun: warm wash + window panes
+  g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, 'rgba(255,214,140,.2)'); g.addColorStop(.55, 'rgba(255,205,130,0)'); g.addColorStop(1, 'rgba(40,18,0,.16)');
+  c.save(); rr(c, -11, -11, W + 22, H + 22, 18); c.clip();
+  c.fillStyle = g; c.fillRect(-11, -11, W + 22, H + 22);
+  c.fillStyle = 'rgba(255,238,190,.075)';
+  for (const ox of [60, 330]) for (const oy of [0, 250]) { c.beginPath(); c.moveTo(ox + 60 - oy * .35, -30 + oy); c.lineTo(ox + 280 - oy * .35, -30 + oy); c.lineTo(ox + 205 - oy * .35, 190 + oy); c.lineTo(ox - 15 - oy * .35, 190 + oy); c.closePath(); c.fill(); }
+  c.restore();
+  // particles
+  for (const p of G.particles) {
+    const k = p.life / p.max;
+    if (p.type === 'dust') { c.fillStyle = `rgba(240,220,185,${.5 * (1 - k)})`; c.beginPath(); c.arc(p.x, p.y, p.size * (1 + k * 1.8), 0, TAU); c.fill(); }
+    else { c.fillStyle = p.col || 'rgba(18,26,92,.8)'; c.globalAlpha = 1 - k; c.beginPath(); c.arc(p.x, p.y, p.size * (1 - k * .5), 0, TAU); c.fill(); c.globalAlpha = 1; }
+  }
+  if (G.aim) drawAim(c);
+  c.restore();
+
+  // dust in the sunlight (screen space)
+  for (const m of motes) {
+    const a = .12 + .3 * (.5 + .5 * Math.sin(t * .9 + m.ph)) * clamp(1.3 - m.x - m.y * .5, .2, 1);
+    c.fillStyle = `rgba(255,240,200,${a})`; c.beginPath(); c.arc(m.x * cw, m.y * ch, m.r, 0, TAU); c.fill();
+  }
+  g = c.createRadialGradient(view.cx, view.cy, Math.min(cw, ch) * .45, view.cx, view.cy, Math.max(cw, ch) * .8);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.4)'); c.fillStyle = g; c.fillRect(0, 0, cw, ch);
+  if (G.aim) drawPowerBar(c);
+}
+
+function aimColor(p) { return `hsl(${Math.round(120 - 120 * p)}, 85%, 48%)`; }
+function drawAim(c) {
+  const a = G.aim, pen = a.pen, p = a.ai ? a.power * Math.min(1, a.prog * 1.25) : a.power;
+  const ox = pen.x + Math.cos(pen.a) * a.grabT, oy = pen.y + Math.sin(pen.a) * a.grabT;
+  if (!a.ai) { // rubber band back to the finger
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 2; c.setLineDash([5, 6]); c.beginPath(); c.moveTo(ox, oy); c.lineTo(a.cx, a.cy); c.stroke(); c.setLineDash([]);
+    c.fillStyle = 'rgba(255,255,255,.3)'; c.strokeStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.arc(a.cx, a.cy, 11, 0, TAU); c.fill(); c.stroke();
+  }
+  c.fillStyle = '#fff'; c.strokeStyle = P_COL[G.turn]; c.lineWidth = 2.5; c.beginPath(); c.arc(ox, oy, 5, 0, TAU); c.fill(); c.stroke();
+  if (p < MIN_POWER) return;
+  const len = 50 + p * 230, ux = Math.cos(a.ang), uy = Math.sin(a.ang), ex = ox + ux * len, ey = oy + uy * len, col = aimColor(p);
+  c.lineCap = 'round';
+  c.strokeStyle = 'rgba(30,15,5,.45)'; c.lineWidth = 9; c.setLineDash([.1, 16]); c.lineDashOffset = -G.time * 60; c.beginPath(); c.moveTo(ox + ux * 14, oy + uy * 14); c.lineTo(ex - ux * 14, ey - uy * 14); c.stroke();
+  c.strokeStyle = col; c.lineWidth = 6; c.beginPath(); c.moveTo(ox + ux * 14, oy + uy * 14); c.lineTo(ex - ux * 14, ey - uy * 14); c.stroke(); c.setLineDash([]);
+  c.fillStyle = col; c.strokeStyle = 'rgba(30,15,5,.6)'; c.lineWidth = 2; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(ex + ux * 10, ey + uy * 10); c.lineTo(ex - ux * 14 - uy * 13, ey - uy * 14 + ux * 13); c.lineTo(ex - ux * 14 + uy * 13, ey - uy * 14 - ux * 13); c.closePath(); c.fill(); c.stroke();
+  c.lineCap = 'butt';
+}
+function drawPowerBar(c) {
+  const a = G.aim, p = a.ai ? a.power * Math.min(1, a.prog * 1.25) : a.power;
+  const w = Math.min(280, view.cw * .62), h = 16, x = (view.cw - w) / 2, y = view.ch - 34;
+  c.fillStyle = 'rgba(25,16,8,.72)'; rr(c, x - 5, y - 5, w + 10, h + 10, 12); c.fill();
+  const g = c.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#3cc24a'); g.addColorStop(.55, '#f2d32e'); g.addColorStop(1, '#e2362c');
+  c.save(); rr(c, x, y, w, h, 8); c.clip(); c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x, y, w, h); c.fillStyle = g; c.fillRect(x, y, w * p, h);
+  c.fillStyle = 'rgba(255,255,255,.3)'; c.fillRect(x, y, w * p, h * .4); c.restore();
+  c.fillStyle = '#fff'; c.font = '800 12px "Baloo 2", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(p >= .98 ? 'FULL POWER!' : 'POWER ' + Math.round(p * 100) + '%', view.cw / 2, y + h / 2 + 1);
+  c.textAlign = 'start'; c.textBaseline = 'alphabetic';
+}
+
+/* =====================================================================
+   6. AUDIO  (everything synthesised with the Web Audio API)
+   ===================================================================== */
+const Sound = (() => {
+  let ac = null, master, amb, noiseBuf, chatterTimer = 0, chatterGains = [];
+  const ok = () => ac && !store.muted;
+  function init() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master = ac.createGain(); master.gain.value = store.muted ? 0 : 1; master.connect(ac.destination);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      ambience();
+    } catch (e) { ac = null; }
+  }
+  const noise = () => { const s = ac.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s; };
+  function env(t, attack, peak, decay, dest = master) {
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(peak, .0002), t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay); g.connect(dest); return g;
+  }
+  function blip(type, f0, f1, t, dur, vol) {
+    const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    o.connect(env(t, .004, vol, dur)); o.start(t); o.stop(t + dur + .05);
+  }
+  function burst(freq, q, t, dur, vol, type = 'bandpass') {
+    const n = noise(), f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    n.connect(f).connect(env(t, .003, vol, dur)); n.start(t); n.stop(t + dur + .05); return f;
+  }
+  function ambience() { // ceiling fan whirr + faint classroom chatter
+    amb = ac.createGain(); amb.gain.value = 1; amb.connect(master);
+    const fan = noise(), lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 210;
+    const fg = ac.createGain(); fg.gain.value = .075; fan.connect(lp).connect(fg).connect(amb); fan.start();
+    const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 5.2; lg.gain.value = .03; lfo.connect(lg).connect(fg.gain); lfo.start();
+    const hum = ac.createOscillator(), hg = ac.createGain(); hum.frequency.value = 58; hg.gain.value = .012; hum.connect(hg).connect(amb); hum.start();
+    for (const f of [380, 720, 1250]) {
+      const n = noise(), bp = ac.createBiquadFilter(), g = ac.createGain(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 2.5; g.gain.value = .004;
+      n.connect(bp).connect(g).connect(amb); n.start(); chatterGains.push(g);
+    }
+    chatterTimer = setInterval(() => { if (!ac) return; for (const g of chatterGains) g.gain.setTargetAtTime(Math.random() < .45 ? rand(.006, .018) : .002, ac.currentTime, rand(.08, .3)); }, 260);
+  }
+  return {
+    init,
+    setMuted(m) { store.muted = m; saveStore(); if (ac) master.gain.setTargetAtTime(m ? 0 : 1, ac.currentTime, .03); },
+    click() { if (!ok()) return; const t = ac.currentTime; burst(3200, 1.5, t, .015, .25); blip('sine', 2600, 1700, t, .03, .12); blip('sine', 1900, 1400, t + .045, .025, .07); },
+    whoosh(p) { if (!ok()) return; const t = ac.currentTime, f = burst(380, 1.2, t, .22 + p * .12, .12 + p * .22); f.frequency.exponentialRampToValueAtTime(900 + 1500 * p, t + .2); },
+    tok(v) { if (!ok()) return; const t = ac.currentTime; v = clamp(v, .05, 1); blip('sine', 210 + v * 60, 105, t, .09, .5 * v); blip('triangle', 640, 380, t, .035, .22 * v); burst(1100, 1.2, t, .03, .3 * v); },
+    clatter() { if (!ok()) return; let t = ac.currentTime + .28; [0, .11, .19, .25, .295, .33].forEach((d, i) => { const v = .34 * Math.pow(.72, i); blip('triangle', rand(700, 1250), 420, t + d, .04, v); burst(2400, 1, t + d, .025, v * .8); }); },
+    squeak() { if (!ok()) return; const t = ac.currentTime, o = ac.createOscillator(), v = ac.createOscillator(), vg = ac.createGain();
+      o.frequency.setValueAtTime(2300, t); o.frequency.linearRampToValueAtTime(3100, t + .09); v.frequency.value = 62; vg.gain.value = 170; v.connect(vg).connect(o.frequency);
+      o.connect(env(t, .01, .028, .09)); o.start(t); v.start(t); o.stop(t + .15); v.stop(t + .15); burst(4200, .8, t, .07, .03, 'highpass'); },
+    latch() { if (!ok()) return; const t = ac.currentTime; for (const d of [0, .055]) { burst(1500, 2, t + d, .02, .22); blip('square', 520, 300, t + d, .02, .06); } },
+    bell(count = 3) { if (!ok()) return; const t = ac.currentTime; for (let i = 0; i < count; i++) [[1, .22], [2.41, .13], [3.9, .07], [5.3, .04]].forEach(([m, v]) => blip('sine', 1240 * m, 0, t + i * .27, .65, v)); },
+    longBell() { if (!ok()) return; const t = ac.currentTime, out = ac.createGain(), trem = ac.createGain();
+      out.gain.setValueAtTime(.0001, t); out.gain.exponentialRampToValueAtTime(.7, t + .03); out.gain.setValueAtTime(.7, t + 2.1); out.gain.exponentialRampToValueAtTime(.0001, t + 3.1); out.connect(master);
+      trem.gain.value = .55; trem.connect(out); const l = ac.createOscillator(), lg = ac.createGain(); l.type = 'square'; l.frequency.value = 19; lg.gain.value = .45; l.connect(lg).connect(trem.gain); l.start(t); l.stop(t + 3.2);
+      [[1, .2], [2.41, .12], [3.9, .07], [5.3, .04]].forEach(([m, v]) => { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 1180 * m; g.gain.value = v; o.connect(g).connect(trem); o.start(t); o.stop(t + 3.2); }); },
+    chorus() { // a distant sing-song "Good mor-ning ma'am"
+      if (!ok()) return; const t0 = ac.currentTime + .15, out = ac.createGain(); out.gain.value = .05; out.connect(master);
+      const f1 = ac.createBiquadFilter(), f2 = ac.createBiquadFilter(); f1.type = f2.type = 'bandpass'; f1.frequency.value = 760; f1.Q.value = 3; f2.frequency.value = 1250; f2.Q.value = 4; f1.connect(out); f2.connect(out);
+      const notes = [[0, 294, 294, .3], [.36, 330, 330, .26], [.66, 294, 294, .3], [1.04, 392, 300, 1.05]];
+      for (let v = 0; v < 6; v++) { const det = 1 + (v - 2.5) * .012, off = rand(.07);
+        for (const [st, fa, fb, du] of notes) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(fa * det, t0 + st + off); o.frequency.linearRampToValueAtTime(fb * det, t0 + st + off + du);
+          const g = ac.createGain(); g.gain.setValueAtTime(.0001, t0 + st + off); g.gain.linearRampToValueAtTime(.5, t0 + st + off + .06); g.gain.setValueAtTime(.5, t0 + st + off + du * .7); g.gain.linearRampToValueAtTime(.0001, t0 + st + off + du);
+          o.connect(g); g.connect(f1); g.connect(f2); o.start(t0 + st + off); o.stop(t0 + st + off + du + .05); } }
+    }
+  };
+})();
+
+/* =====================================================================
+   7. GAME STATE + FLOW
+   ===================================================================== */
+const G = {
+  mode: '2p', diff: 'medium', names: ['Player 1', 'Player 2'], penIds: ['classic', 'gel'],
+  score: [0, 0], draws: 0, round: 0, turn: 0, state: 'idle', paused: false,
+  bodies: [], pens: [null, null], aim: null, particles: [], inks: [], trails: [],
+  shake: 0, time: 0, moveT: 0, timers: [], flicker: 0, bullseye: false, acc: 0
+};
+const world = { bodies: G.bodies, onHit, onFall };
+let screen = 'title';
+
+function after(sec, fn) { G.timers.push({ t: sec, fn }); }
+function pop(key, wx, wy) {
+  const p = toScreen(clamp(wx, 60, W - 60), clamp(wy, 50, H - 40)), el = document.createElement('div');
+  el.className = 'pop'; el.textContent = POPS[key]; el.style.left = clamp(p.x, 90, view.cw - 90) + 'px'; el.style.top = p.y + 'px';
+  document.body.appendChild(el); el.addEventListener('animationend', () => el.remove());
+}
+function showBanner(text, who) {
+  const b = $('banner'); b.textContent = text; b.className = who ? 'p2' : ''; void b.offsetWidth; b.classList.add('go');
+}
+function updateHud() {
+  for (const i of [0, 1]) {
+    $('n' + i).textContent = G.names[i];
+    $('pp' + i).innerHTML = Array.from({ length: WIN_ROUNDS }, (_, k) => `<i class="${k < G.score[i] ? 'on' : ''}"></i>`).join('');
+    $('pl' + i).classList.toggle('turn', G.turn === i && (G.state === 'aim' || G.state === 'moving'));
+  }
+  $('rnd').textContent = 'Round ' + Math.max(1, G.round);
+  $('bDate').textContent = 'Date: ' + new Date().toLocaleDateString('en-GB');
+  $('bClass').textContent = `Class ${store.klass || '7-B'}, Monitor: ${store.monitor || '___'}`;
+}
+
+function startMatch() {
+  G.score = [0, 0]; G.draws = 0; G.round = 0; G.inks.length = 0; G.paused = false;
+  startRound();
+}
+function startRound() {
+  G.round++; G.timers.length = 0; G.particles.length = 0; G.trails.length = 0; G.aim = null; G.shake = 0;
+  G.bodies.length = 0;
+  for (const i of [0, 1]) {
+    const def = PEN_BY_ID[G.penIds[i]];
+    const b = makeBody('pen', def, i ? 770 : 230, H / 2 + rand(-20, 20), (i ? -1 : 1) * (Math.PI / 2 + rand(-.3, .3)));
+    b.owner = i; G.pens[i] = b; G.bodies.push(b);
+  }
+  for (const p of PROPS) G.bodies.push(makeBody('prop', p, p.x + rand(-6, 6), p.y + rand(-6, 6), p.a + rand(-.12, .12)));
+  G.turn = (G.round - 1) % 2; G.state = 'intro';
+  updateHud(); Sound.bell(3);
+  after(.9, beginTurn);
+}
+function isAiTurn() { return G.mode === 'cpu' && G.turn === 1; }
+function beginTurn() {
+  G.state = 'aim'; G.aim = null; updateHud();
+  const nm = G.names[G.turn];
+  showBanner(G.mode === 'cpu' && G.turn === 0 ? 'Your turn!' : nm + (/s$/i.test(nm) ? '’ turn' : '’s turn'), G.turn);
+  if (isAiTurn()) after(.9, aiTakeTurn);
+}
+function doFlick(pen, grabT, ang, power) {
+  applyFlick(pen, grabT, ang, power, Math.random() * 2 - 1);
+  G.aim = null; G.state = 'moving'; G.moveT = 0; G.flicker = pen.owner; G.bullseye = false;
+  Sound.whoosh(power);
+  if (power >= .98) { pop('full', pen.x, pen.y - 40); G.shake = Math.max(G.shake, 5); }
+  updateHud();
+}
+function onHit(A, B, x, y, j) {
+  Sound.tok(j / 700);
+  if (j > 60) addParticles('dust', x, y, Math.min(10, 3 + Math.floor(j / 120)), clamp(j / 500, .5, 1.6));
+  G.shake = Math.max(G.shake, Math.min(7, j / 110));
+  if (j > 200) buzz(Math.min(30, Math.round(j / 30)));
+  for (const b of [A, B]) {
+    if (b.def.quirk === 'ink' && j > 110) { addInk(x, y, clamp(j / 600, .5, 1.5)); addParticles('ink', x, y, 6, 1.2); }
+    if (b.def.quirk === 'sparkle' && j > 80) addParticles('spark', x, y, 8, 1.2);
+  }
+  if (A.kind === 'pen' && B.kind === 'pen' && j > 480 && !G.bullseye) { G.bullseye = true; pop('bull', x, y - 30); }
+}
+function onFall(b) {
+  Sound.clatter();
+  addParticles('dust', b.x, b.y, 8, 1);
+  if (b.kind !== 'pen') return;
+  G.shake = Math.max(G.shake, 6); buzz([40, 60, 40]);
+  pop('gone', b.x, b.y + 46);
+  if (b.owner !== G.flicker) after(.45, () => pop('shot', W / 2, H / 2 - 60));
+}
+function resolveTurn() {
+  const f = G.pens.map(p => p.falling || p.dead);
+  if (f[0] || f[1]) { G.state = 'roundEnd'; updateHud(); after(.7, () => showRoundResult(f[0] && f[1] ? -1 : f[0] ? 1 : 0)); return; }
+  for (const p of G.pens) if (edgeDist(p) < 26) pop('close', p.x, p.y - 20);
+  G.turn = 1 - G.turn; beginTurn();
+}
+
+function update(dt) {
+  G.time += dt;
+  for (let i = G.timers.length - 1; i >= 0; i--) { const tm = G.timers[i]; tm.t -= dt; if (tm.t <= 0) { G.timers.splice(i, 1); tm.fn(); } }
+  // physics
+  G.acc += dt; let n = 0;
+  while (G.acc >= SUB_DT && n < MAX_SUB) { stepWorld(world, SUB_DT); G.acc -= SUB_DT; n++; }
+  if (n === MAX_SUB) G.acc = 0;
+  if (G.state === 'moving') {
+    G.moveT += dt;
+    if (G.moveT > MOVE_TIMEOUT) for (const b of G.bodies) if (!b.falling) b.vx = b.vy = b.w = 0; // safety net
+    if (G.moveT > .15 && worldAtRest(world)) resolveTurn();
+  }
+  // AI wind-up
+  if (G.aim && G.aim.ai) { G.aim.prog += dt / .85; if (G.aim.prog >= 1) { const a = G.aim; doFlick(a.pen, a.grabT, a.ang, a.power); } }
+  if (G.aim && !G.aim.ai && G.aim.power >= .98) G.shake = Math.max(G.shake, 2.2);
+  // effects
+  G.shake = G.shake > .2 ? G.shake * Math.pow(.0009, dt) : 0;
+  for (const p of G.pens) {
+    if (!p || p.dead) continue;
+    const sp = Math.hypot(p.vx, p.vy);
+    if (sp > 260 || Math.abs(p.w) > 9) G.trails.push({ x: p.x, y: p.y, a: p.a, hl: p.hl, r: p.r, al: 1, col: p.def.color });
+    if (p.def.quirk === 'sparkle' && sp > 200 && Math.random() < .5) addParticles('spark', p.x, p.y, 1, .3);
+  }
+  for (let i = G.trails.length - 1; i >= 0; i--) { G.trails[i].al -= dt * 6; if (G.trails[i].al <= 0) G.trails.splice(i, 1); }
+  for (let i = G.particles.length - 1; i >= 0; i--) { const p = G.particles[i]; p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - 3 * dt; p.vy *= 1 - 3 * dt; if (p.life >= p.max) G.particles.splice(i, 1); }
+  for (const m of motes) { m.x += m.vx * dt; m.y += m.vy * dt + Math.sin(G.time + m.ph) * .0003; if (m.x > 1.03) m.x = -.03; if (m.y < -.03) m.y = 1.03; if (m.y > 1.03) m.y = -.03; }
+}
+
+/* =====================================================================
+   8. INPUT  (mouse + touch through pointer events)
+   ===================================================================== */
+function pointerWorld(e) { const r = cv.getBoundingClientRect(); return toWorld(e.clientX - r.left, e.clientY - r.top); }
+cv.addEventListener('pointerdown', e => {
+  Sound.init();
+  if (screen !== 'game' || G.paused || G.state !== 'aim' || isAiTurn() || G.aim) return;
+  const pen = G.pens[G.turn], p = pointerWorld(e);
+  const c = Math.cos(pen.a), s = Math.sin(pen.a), along = (p.x - pen.x) * c + (p.y - pen.y) * s, across = -(p.x - pen.x) * s + (p.y - pen.y) * c;
+  const reach = Math.max(18, (e.pointerType === 'touch' ? 30 : 16) / view.s); // generous grab area on small screens
+  if (Math.abs(across) > pen.r + reach || Math.abs(along) > pen.hl + pen.r + reach) return;
+  G.aim = { pen, grabT: clamp(along, -pen.hl, pen.hl), sx: p.x, sy: p.y, cx: p.x, cy: p.y, power: 0, ang: 0, id: e.pointerId };
+  try { cv.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+  Sound.click(); e.preventDefault();
+});
+cv.addEventListener('pointermove', e => {
+  const a = G.aim; if (!a || a.ai || e.pointerId !== a.id) return;
+  const p = pointerWorld(e); a.cx = p.x; a.cy = p.y;
+  const dx = a.sx - p.x, dy = a.sy - p.y, d = Math.hypot(dx, dy);
+  a.power = clamp(d / MAX_DRAG, 0, 1); if (d > 1) a.ang = Math.atan2(dy, dx);
+});
+function endAim(e, cancel) {
+  const a = G.aim; if (!a || a.ai || (e && e.pointerId !== a.id)) return;
+  if (!cancel && a.power >= MIN_POWER && G.state === 'aim' && !G.paused) doFlick(a.pen, a.grabT, a.ang, a.power);
+  else G.aim = null;
+}
+cv.addEventListener('pointerup', e => endAim(e, false));
+cv.addEventListener('pointercancel', e => endAim(e, true));
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && screen === 'game') { $('pause').classList.contains('show') ? resumeGame() : $('howto').classList.contains('show') ? closeHow() : pauseGame(); }
+  if (e.key === 'm' || e.key === 'M') toggleMute();
+});
+
+/* =====================================================================
+   9. AI  (tries candidate shots in a copy of the world, then adds human error)
+   ===================================================================== */
+function simulateShot(grabT, ang, power) {
+  const bodies = G.bodies.map(b => Object.assign({}, b)), sim = { bodies };
+  const me = bodies[G.bodies.indexOf(G.pens[1])], you = bodies[G.bodies.indexOf(G.pens[0])], startD = edgeDist(you), sx = you.x, sy = you.y;
+  applyFlick(me, grabT, ang, power, 0);
+  for (let i = 0; i < 700; i++) { stepWorld(sim, 1 / 160); if (i > 20 && i % 8 === 0 && worldAtRest(sim)) break; }
+  const youOut = you.falling || you.dead, meOut = me.falling || me.dead;
+  if (youOut && meOut) return -400;
+  if (meOut) return -1000;
+  if (youOut) return 1000 - power * 20;
+  const moved = Math.hypot(you.x - sx, you.y - sy);
+  return (startD - edgeDist(you)) * 2 + Math.min(moved, 80) * .4 + Math.min(edgeDist(me), 150) * .5;
+}
+function aiTakeTurn() {
+  if (G.state !== 'aim' || !isAiTurn()) return;
+  const lv = AI_LEVEL[G.diff], me = G.pens[1], you = G.pens[0];
+  const base = Math.atan2(you.y - me.y, you.x - me.x), dist = Math.hypot(you.x - me.x, you.y - me.y);
+  let best = { score: -Infinity, ang: base, power: clamp(.35 + dist / 900, .4, .95), grabT: 0 };
+  if (G.diff !== 'easy') {
+    for (const da of lv.angles) for (const pw of lv.powers) {
+      const sc = simulateShot(0, base + da, pw);
+      if (sc > best.score) best = { score: sc, ang: base + da, power: pw, grabT: 0 };
+    }
+  } else best.grabT = rand(-.5, .5) * me.hl;
+  const ang = best.ang + gauss() * lv.angErr, power = clamp(best.power * (1 + gauss() * lv.powErr), .3, 1);
+  G.aim = { ai: true, pen: me, grabT: best.grabT, ang, power, prog: 0 };
+  Sound.click();
+}
+
+/* =====================================================================
+   10. UI SCREENS
+   ===================================================================== */
+function show(id) {
+  const cur = document.querySelector('.page.active:not(.turn-out)'), nx = id === 'game' ? null : $(id);
+  if (cur && cur !== nx) { cur.classList.add('turn-out'); setTimeout(() => cur.classList.remove('active', 'turn-out'), 620); }
+  if (nx) { nx.classList.remove('turn-out'); nx.classList.add('active'); nx.scrollTop = 0; }
+  screen = id; document.body.classList.toggle('in-game', id === 'game');
+  Sound.latch();
+  if (id === 'title') { refreshTitle(); setTimeout(() => Sound.chorus(), 500); }
+}
+function openOverlay(id) { $(id).classList.add('show'); Sound.latch(); }
+function closeOverlay(id) { $(id).classList.remove('show'); Sound.latch(); }
+
+// ----- Title -----
+function refreshTitle() {
+  $('name0').value = store.names[0] || ''; $('name1').value = store.names[1] || ''; $('klass').value = store.klass || '7-B';
+  $('name0').placeholder = 'Player 1'; $('name1').placeholder = 'Player 2';
+  $('bestLine').textContent = store.best ? `Best streak vs Computer: ${store.best} round${store.best === 1 ? '' : 's'} in a row 🔥` : 'Win rounds in a row against the Computer to unlock secret pens.';
+}
+function readNames() {
+  store.names = [$('name0').value.trim(), $('name1').value.trim()]; store.klass = $('klass').value.trim() || '7-B'; saveStore();
+}
+function drawTitleArt() {
+  const c = $('titleArt').getContext('2d'); c.clearRect(0, 0, 680, 220);
+  c.save(); c.translate(250, 112); c.rotate(-.42); c.scale(2.6, 2.6); drawPen(c, PEN_BY_ID.classic, 2.4); c.restore();
+  c.save(); c.translate(430, 112); c.rotate(Math.PI + .42); c.scale(2.6, 2.6); drawPen(c, PEN_BY_ID.gel, 2.4); c.restore();
+  c.strokeStyle = '#fff3c4'; c.lineWidth = 5; c.lineCap = 'round';
+  for (let i = 0; i < 7; i++) { const an = -Math.PI / 2 + (i - 3) * .42; c.beginPath(); c.moveTo(340 + Math.cos(an) * 34, 60 + Math.sin(an) * 34); c.lineTo(340 + Math.cos(an) * 56, 60 + Math.sin(an) * 56); c.stroke(); }
+}
+
+// ----- Pen select -----
+let picking = 0, picked = null;
+function buildCards() {
+  const wrap = $('cards'); wrap.innerHTML = '';
+  PENS.forEach((def, i) => {
+    const locked = !isUnlocked(def), b = document.createElement('button');
+    b.className = 'card' + (def.unlock ? ' rare' : '') + (locked ? ' locked' : ''); b.style.setProperty('--cc', def.color); b.dataset.id = def.id;
+    if (locked) b.setAttribute('aria-disabled', 'true');
+    const stats = Object.entries(def.stats).map(([k, v]) => `<div class="stat"><span>${k}</span><em><u style="width:${v * 20}%"></u></em></div>`).join('');
+    b.innerHTML = `<div class="in"><div class="top"><span>No. ${String(i + 1).padStart(2, '0')}</span><span>${def.unlock ? '★ Rare' : 'Common'}</span></div>
+      <canvas width="300" height="170"></canvas><div class="cname"></div><div class="ctag"></div>${stats}</div>
+      ${locked ? `<div class="lock"><b>🔒</b>Win ${def.unlock} rounds in a row vs Computer</div>` : ''}`;
+    b.querySelector('.cname').textContent = def.name; b.querySelector('.ctag').textContent = def.tag;
+    const c = b.querySelector('canvas').getContext('2d');
+    c.translate(150, 85); c.rotate(-.5); c.scale(1.55, 1.55); drawPen(c, def, 1.6);
+    b.addEventListener('click', () => { if (locked) return; picked = def.id; wrap.querySelectorAll('.card').forEach(x => x.classList.toggle('sel', x === b)); $('pickOk').disabled = false; Sound.click(); });
+    wrap.appendChild(b);
+  });
+}
+function openPick(who) {
+  picking = who; picked = null; buildCards(); $('pickOk').disabled = true;
+  const nm = G.names[who];
+  $('pickTitle').innerHTML = ''; const u = document.createElement('u'); u.textContent = `${nm}, pick your pen`; $('pickTitle').appendChild(u);
+  $('pickSub').textContent = G.mode === '2p' ? (who ? 'Player 2’s turn to choose. No peeking, Player 1.' : 'Player 1 chooses first.') : 'Every pen plays differently. Choose wisely.';
+  if (screen === 'pens') $('pens').scrollTop = 0; else show('pens');
+}
+function confirmPick() {
+  if (!picked) return;
+  G.penIds[picking] = picked;
+  if (G.mode === '2p' && picking === 0) { openPick(1); return; }
+  if (G.mode === 'cpu') G.penIds[1] = pick(PENS.filter(p => !p.unlock)).id;
+  goLoading();
+}
+function goLoading() {
+  $('memory').textContent = '“' + pick(MEMORIES) + '”';
+  $('loadNote').textContent = G.mode === 'cpu' ? `Computer picked: ${PEN_BY_ID[G.penIds[1]].name}` : 'Sharpening pencils…';
+  show('loading');
+  setTimeout(() => { if (screen !== 'loading') return; resize(); startMatch(); show('game'); }, 1900);
+}
+
+// ----- Round + match results -----
+function showRoundResult(winner) {
+  let gift = '';
+  if (winner >= 0) G.score[winner]++; else G.draws++;
+  if (G.mode === 'cpu' && winner >= 0) {
+    if (winner === 0) {
+      store.streak++; if (store.streak > store.best) store.best = store.streak;
+      for (const def of PENS) if (def.unlock && store.best >= def.unlock && !store.unlocked.includes(def.id)) { store.unlocked.push(def.id); gift = def.name; }
+    } else store.streak = 0;
+    saveStore();
+  }
+  updateHud();
+  const over = G.score[0] >= WIN_ROUNDS || G.score[1] >= WIN_ROUNDS;
+  $('rrRound').textContent = 'Round ' + G.round;
+  $('rrScore').textContent = `${G.names[0]} ${G.score[0]} – ${G.score[1]} ${G.names[1]}`;
+  const rem = $('rrRemark'); rem.innerHTML = '';
+  if (winner < 0) { $('rrTitle').textContent = 'Both pens fell. Draw!'; rem.textContent = pick(REMARKS_DRAW); }
+  else {
+    const youWon = G.mode === 'cpu' && winner === 0, youLost = G.mode === 'cpu' && winner === 1;
+    $('rrTitle').textContent = youWon ? 'You win the round!' : youLost ? 'Computer wins the round' : `${G.names[winner]} wins the round!`;
+    if (youWon) rem.textContent = pick(['Good work!', 'Very good!', 'Keep it up!']);
+    else { rem.textContent = pick(REMARKS_LOSE); const sm = document.createElement('small'); sm.textContent = '— for ' + (youLost ? 'you' : G.names[1 - winner]); rem.appendChild(sm); }
+  }
+  $('rrGift').innerHTML = ''; if (gift) { const gEl = document.createElement('div'); gEl.className = 'gift'; gEl.textContent = '🎁 New pen unlocked: ' + gift; $('rrGift').appendChild(gEl); }
+  $('rrNext').textContent = over ? 'See report card ➜' : 'Next round ➜';
+  $('rrNext').onclick = () => { closeOverlay('roundRes'); over ? showMatchResult() : startRound(); };
+  openOverlay('roundRes');
+}
+function gradeFor(m) { return m >= 90 ? 'A+' : m >= 80 ? 'A' : m >= 70 ? 'B+' : m >= 60 ? 'B' : m >= 50 ? 'C' : m >= 35 ? 'D' : 'F'; }
+const TEACHER = { 'A+': 'Outstanding! A pleasure to have in class.', A: 'Excellent work. Keep it up.', 'B+': 'Good effort. A little more focus needed.', B: 'Good, but can do better.', C: 'Needs improvement. Practise daily.', D: 'Careless mistakes. Must work harder.', F: 'Very poor. Meet me with your parents.' };
+function showMatchResult() {
+  G.state = 'matchEnd';
+  const winner = G.score[0] > G.score[1] ? 0 : 1, student = G.mode === 'cpu' ? 0 : winner, won = student === winner;
+  const w = G.score[student], l = G.score[1 - student];
+  const marks = clamp(won ? 100 - l * 14 - G.draws * 2 : 20 + w * 17 - G.draws * 2, 5, 100), grade = gradeFor(marks);
+  store.monitor = G.names[winner]; saveStore(); updateHud();
+  const el = $('reportCard');
+  el.innerHTML = `${won ? '<div class="trophy">🏆</div>' : ''}
+    <div class="school">Sunshine Public School</div><div class="prog">Progress Report</div>
+    <div class="who"><span>Name: <b id="rcName"></b></span><span>Class: <b id="rcClass"></b></span></div>
+    <table><tr><th>Subject</th><th>Max marks</th><th>Marks obtained</th><th>Grade</th></tr>
+    <tr><td>Pen Fight</td><td>100</td><td class="hand">${marks}</td><td class="grade">${grade}</td></tr></table>
+    <div class="tr">Result: <span id="rcResult"></span></div>
+    <div class="tr">Class teacher’s remark: <i>${TEACHER[grade]}</i></div>
+    <div class="signs"><span>Class Teacher: <span class="sig">S. Iyer</span></span><span>Parent’s Signature: ____________</span></div>
+    <div class="notes"><button class="note green" id="rcAgain">Play again</button><button class="note" id="rcPens">Change pens</button><button class="note pink" id="rcMenu">Main Menu</button></div>`;
+  $('rcName').textContent = G.names[student]; $('rcClass').textContent = store.klass || '7-B';
+  $('rcResult').textContent = `${won ? 'Won' : 'Lost'} ${w}–${l} against ${G.names[1 - student]}` + (G.draws ? `, ${G.draws} drawn` : '') + `. New class monitor: ${G.names[winner]}.`;
+  $('rcAgain').onclick = () => { stopConfetti(); closeOverlay('matchRes'); startMatch(); };
+  $('rcPens').onclick = () => { stopConfetti(); closeOverlay('matchRes'); G.state = 'idle'; openPick(0); };
+  $('rcMenu').onclick = () => { stopConfetti(); closeOverlay('matchRes'); G.state = 'idle'; show('title'); };
+  openOverlay('matchRes'); Sound.longBell();
+  if (won) startConfetti();
+}
+
+// ----- Confetti -----
+let confRaf = 0, confBits = [];
+function startConfetti() {
+  const c = $('fx').getContext('2d'), d = view.dpr, cw = view.cw, ch = view.ch, cols = ['#e2574c', '#ffe04a', '#3d8fd1', '#6cc24a', '#b47cf0', '#ff9d2e'];
+  confBits = Array.from({ length: 150 }, () => ({ x: rand(cw), y: rand(-ch, 0), w: rand(6, 12), h: rand(4, 8), vy: rand(120, 300), vx: rand(-40, 40), r: rand(TAU), vr: rand(-6, 6), ph: rand(TAU), col: pick(cols) }));
+  let last = performance.now(); cancelAnimationFrame(confRaf);
+  (function loop(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, cw, ch);
+    for (const b of confBits) {
+      b.ph += dt * 3; b.x += (b.vx + Math.sin(b.ph) * 50) * dt; b.y += b.vy * dt; b.r += b.vr * dt;
+      if (b.y > ch + 20) { b.y = -20; b.x = rand(cw); }
+      c.save(); c.translate(b.x, b.y); c.rotate(b.r); c.scale(1, Math.cos(b.ph * 1.6)); c.fillStyle = b.col; c.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); c.restore();
+    }
+    confRaf = requestAnimationFrame(loop);
+  })(last);
+}
+function stopConfetti() { cancelAnimationFrame(confRaf); const fx = $('fx'); fx.getContext('2d').clearRect(0, 0, fx.width, fx.height); }
+
+// ----- Pause + how to play -----
+function pauseGame() { if (screen !== 'game' || G.state === 'matchEnd' || $('roundRes').classList.contains('show')) return; G.paused = true; if (G.aim && !G.aim.ai) G.aim = null; openOverlay('pause'); }
+function resumeGame() { closeOverlay('pause'); G.paused = false; }
+let howRaf = 0, howFromPause = false;
+function openHow(fromPause) {
+  howFromPause = fromPause; if (fromPause) $('pause').classList.remove('show');
+  openOverlay('howto');
+  const c = $('howCanvas').getContext('2d'), A = PEN_BY_ID.classic, B = PEN_BY_ID.gel, t0 = performance.now();
+  cancelAnimationFrame(howRaf);
+  (function loop(now) {
+    const t = ((now - t0) / 1000) % 4.2, ease = x => x * x * (3 - 2 * x);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    const g = c.createLinearGradient(0, 0, 640, 300); g.addColorStop(0, '#d9a468'); g.addColorStop(1, '#b67c42'); c.fillStyle = g; c.fillRect(0, 0, 640, 300);
+    c.strokeStyle = 'rgba(96,52,18,.18)'; c.lineWidth = 2; for (let y = 22; y < 300; y += 34) { c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(200, y + 8, 420, y - 8, 640, y + 3); c.stroke(); }
+    const drag = clamp((t - .7) / 1.1, 0, 1), fl = clamp((t - 2) / .5, 0, 1), after2 = clamp((t - 2.5) / 1.1, 0, 1);
+    const ax = 210 + ease(fl) * 190 - after2 * 20, bx = 440 + (fl >= 1 ? ease(after2) * 260 : 0), fade = t > 3.8 ? 1 - (t - 3.8) / .4 : 1;
+    c.globalAlpha = fade;
+    c.save(); c.translate(bx, 150); c.rotate(Math.PI / 2 + after2 * 3); c.scale(1.5, 1.5); drawPen(c, B, 2); c.restore();
+    c.save(); c.translate(ax, 150); c.rotate(-Math.PI / 2 + (fl > 0 ? after2 * .5 : 0)); c.scale(1.5, 1.5); drawPen(c, A, 2); c.restore();
+    if (t < 2) { // finger + arrow
+      const fx = t < .7 ? lerp(120, 210, ease(t / .7)) : 210 - ease(drag) * 120, fy = t < .7 ? lerp(250, 150, ease(t / .7)) : 150;
+      if (drag > .05) {
+        const len = 40 + drag * 150; c.strokeStyle = aimColor(drag); c.fillStyle = aimColor(drag); c.lineWidth = 8; c.lineCap = 'round'; c.setLineDash([.1, 18]);
+        c.beginPath(); c.moveTo(226, 150); c.lineTo(210 + len, 150); c.stroke(); c.setLineDash([]);
+        c.beginPath(); c.moveTo(232 + len, 150); c.lineTo(210 + len, 136); c.lineTo(210 + len, 164); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(210, 150); c.lineTo(fx, fy); c.stroke(); c.setLineDash([]);
+      }
+      c.fillStyle = t > .7 ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.3)'; c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(fx, fy, t > .7 ? 15 : 19, 0, TAU); c.fill(); c.stroke();
+    }
+    c.globalAlpha = 1;
+    c.fillStyle = 'rgba(40,22,6,.85)'; c.font = '26px "Patrick Hand", cursive'; c.textAlign = 'center';
+    c.fillText(t < .7 ? 'Press on your pen…' : t < 2 ? '…drag backwards…' : '…and let go!', 320, 276);
+    howRaf = requestAnimationFrame(loop);
+  })(t0);
+}
+function closeHow() { cancelAnimationFrame(howRaf); closeOverlay('howto'); if (howFromPause) $('pause').classList.add('show'); }
+
+function toggleMute() { Sound.init(); Sound.setMuted(!store.muted); $('muteBtn').textContent = store.muted ? '🔇' : '🔊'; $('muteBtn').setAttribute('aria-label', store.muted ? 'Unmute sound' : 'Mute sound'); }
+
+// ----- Wiring -----
+document.addEventListener('pointerdown', () => { const first = !Sound._started; Sound.init(); if (first) { Sound._started = true; if (screen === 'title') setTimeout(() => Sound.chorus(), 250); } }, true);
+document.addEventListener('click', e => { if (e.target.closest('.note, .icon-btn')) Sound.squeak(); });
+$('muteBtn').addEventListener('click', toggleMute);
+$('pauseBtn').addEventListener('click', pauseGame);
+$('startBtn').addEventListener('click', () => { readNames(); show('mode'); });
+$('howBtn').addEventListener('click', () => openHow(false));
+$('howClose').addEventListener('click', closeHow);
+$('pauseHow').addEventListener('click', () => openHow(true));
+$('resumeBtn').addEventListener('click', resumeGame);
+$('restartBtn').addEventListener('click', () => { closeOverlay('pause'); startMatch(); });
+$('menuBtn').addEventListener('click', () => { closeOverlay('pause'); G.paused = false; G.state = 'idle'; G.timers.length = 0; show('title'); });
+$('pickOk').addEventListener('click', confirmPick);
+$('pickBack').addEventListener('click', () => { if (G.mode === '2p' && picking === 1) openPick(0); else show('mode'); });
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+  G.mode = b.dataset.mode; G.diff = b.dataset.diff || 'medium';
+  G.names = [store.names[0] || (G.mode === 'cpu' ? 'You' : 'Player 1'), G.mode === 'cpu' ? 'Computer' : (store.names[1] || 'Player 2')];
+  openPick(0);
+}));
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+document.addEventListener('visibilitychange', () => { if (document.hidden && screen === 'game' && G.state !== 'matchEnd' && !G.paused) pauseGame(); });
+
+/* =====================================================================
+   11. MAIN LOOP + BOOT
+   ===================================================================== */
+let lastTs = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(.05, (ts - lastTs) / 1000 || 0); lastTs = ts;
+  if (screen !== 'game' && screen !== 'loading') return;
+  if (screen === 'game' && !G.paused) update(dt);
+  render(dt);
+}
+$('muteBtn').textContent = store.muted ? '🔇' : '🔊';
+refreshTitle(); updateHud(); resize(); drawTitleArt();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { buildDesk(); });
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
