@@ -427,7 +427,7 @@
 
   <section class="panel">
     <header>
-      <h1>Snakes &amp; Ladders<small>Roll a 6 to start · first to 100 wins!</small></h1>
+      <h1>Snakes &amp; Ladders<small>First to square 100 wins!</small></h1>
       <div class="mode" role="group" aria-label="Game mode">
         <button id="modeCpu" aria-pressed="true">vs Computer</button>
         <button id="mode2p" aria-pressed="false">2 Players</button>
@@ -711,15 +711,9 @@ async function roll(fromCpu = false) {
   if (g !== game) return;
 
   let msg = `Rolled <b>${value}</b>`;
-  const starting = pos[p] === 0;           // a token needs a six to get onto the board
-  const target = starting ? 1 : pos[p] + value;
+  const target = pos[p] + value;
 
-  if (starting && value !== 6) {
-    msg += ' — needs a <b>6</b> to start moving.';
-    sfx.stuck();
-    say(p, msg);
-    await sleep(500);
-  } else if (target > 100) {
+  if (target > 100) {
     const need = 100 - pos[p];
     msg += ` — too many! Needs exactly <b>${need}</b> to finish.`;
     sfx.stuck();
@@ -760,7 +754,7 @@ async function roll(fromCpu = false) {
       if (g !== game) return;
       pos[p] = to;
     } else {
-      msg += starting ? ' — on the board at square <b>1</b>!' : ` → square <b>${here}</b>`;
+      msg += ` → square <b>${here}</b>`;
     }
     place(p, pos[p]);
     spread();
@@ -794,8 +788,8 @@ function newGame() {
   spread();
   showDice(1);
   say(null, mode === 'cpu'
-    ? 'You are <b style="color:#b53e35">red</b>. Roll a <b>6</b> to get on the board!'
-    : '<b style="color:#b53e35">Player 1</b> rolls first. Each player needs a <b>6</b> to get on the board.');
+    ? 'Roll the dice to begin. You are <b style="color:#b53e35">red</b>!'
+    : '<b style="color:#b53e35">Player 1</b> rolls first. Pass the device after each turn.');
   refresh();
 }
 
