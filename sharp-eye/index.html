@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="color-scheme" content="light dark">
+<title>Sharp Eye</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --fg: #141414; --mut: #6f6c66; --line: #e3dfd6; --tint: #eceae4;
+    --acc: #ff4b1f; --good: #1faa59; --mid: #f2a516; --bad: #e5484d;
+    --font: "Space Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111110; --card: #1c1c1a; --fg: #f3f1ec; --mut: #9a978f; --line: #2e2d2a; --tint: #272725; --acc: #ff6a3d; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: var(--bg); color: var(--fg); font-family: var(--font);
+    -webkit-text-size-adjust: 100%; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+  button:focus-visible, [role="slider"]:focus-visible { outline: 3px solid var(--acc); outline-offset: 3px; }
+
+  #app { height: 100dvh; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column;
+    padding: max(12px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+
+  /* ---------- Header ---------- */
+  header { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; height: 48px; }
+  .brand { font-weight: 700; font-size: 18px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+  .brand i { width: 14px; height: 14px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 4px var(--bg), 0 0 0 5.5px var(--fg); margin: 0 5px; }
+  #roundLbl { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; min-width: 52px; }
+  #dots { display: flex; gap: 5px; margin: 0 auto; }
+  #dots b, #endDots b { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background .25s, transform .25s; }
+  #dots b.now { background: var(--fg); transform: scale(1.25); }
+  b.good { background: var(--good) !important; } b.mid { background: var(--mid) !important; } b.bad { background: var(--bad) !important; }
+  #scoreLbl { font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+  #muteBtn { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; flex: 0 0 44px; }
+  #muteBtn svg { width: 20px; height: 20px; }
+  .playing #muteBtn { margin-left: 0; }
+
+  /* ---------- Screens ---------- */
+  .screen { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; animation: fade .28s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } }
+  .center { align-items: flex-start; justify-content: center; gap: 0; }
+  h1 { font-size: clamp(54px, 17vw, 92px); line-height: .92; letter-spacing: -.05em; margin: 0; font-weight: 700; }
+  h1 span { color: var(--acc); }
+  .lede { font-size: clamp(18px, 4.6vw, 22px); line-height: 1.35; color: var(--mut); margin: 18px 0 30px; max-width: 26ch; font-weight: 500; }
+  .btn { height: 58px; padding: 0 30px; border-radius: 30px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 18px; letter-spacing: -.01em; transition: transform .12s ease, opacity .2s; }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost { background: transparent; color: var(--fg); border: 1.5px solid var(--fg); }
+  .btn.wide { width: 100%; }
+  .small { font-size: 14px; color: var(--mut); margin-top: 18px; font-weight: 500; }
+
+  /* ---------- Play ---------- */
+  #timer { flex: 0 0 auto; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin: 6px 0 0; }
+  #timer i { display: block; height: 100%; background: var(--acc); transform-origin: left center; will-change: transform; }
+  #say { flex: 0 0 auto; font-size: clamp(20px, 5.4vw, 26px); line-height: 1.15; font-weight: 700; letter-spacing: -.02em; margin: 18px 0 14px; min-height: 2.3em; display: flex; align-items: flex-end; }
+  #cardWrap { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
+  #card { position: relative; width: min(100cqw, 100cqh); aspect-ratio: 1; background: var(--card); border-radius: 26px; border: 1.5px solid var(--line); overflow: hidden; transition: opacity .2s ease, transform .2s ease; }
+  #card.leave { opacity: 0; transform: translateX(-26px); }
+  #card.enter { opacity: 0; transform: translateX(26px); transition: none; }
+  #stage { position: absolute; inset: 0; touch-action: none; }
+  #chip { position: absolute; left: 50%; bottom: 14px; transform: translate(-50%, 16px); background: var(--fg); color: var(--bg); font-weight: 700; font-size: 16px; padding: 8px 16px; border-radius: 22px; white-space: nowrap; opacity: 0; transition: opacity .18s, transform .18s; pointer-events: none; z-index: 5; display: flex; gap: 10px; align-items: center; }
+  #chip.on { opacity: 1; transform: translate(-50%, 0); }
+  #chip em { font-style: normal; padding: 1px 9px; border-radius: 12px; color: #fff; font-variant-numeric: tabular-nums; }
+  #lockBtn { flex: 0 0 auto; margin-top: 14px; }
+  #lockBtn.off { visibility: hidden; }
+
+  /* challenge pieces */
+  .abs { position: absolute; }
+  .dot { width: 20px; height: 20px; margin: -10px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 3px var(--card), 0 2px 8px rgba(0, 0, 0, .25); z-index: 3; }
+  .truth { border: 0 dashed var(--fg); z-index: 2; pointer-events: none; animation: fade .2s ease both; }
+  .tag { font-size: 13px; font-weight: 700; color: var(--mut); letter-spacing: .04em; text-transform: uppercase; text-align: center; }
+  .tile { border-radius: 14%; transition: transform .15s, opacity .2s; }
+  .tile:active { transform: scale(.95); }
+  .slider { position: absolute; left: 6%; right: 6%; bottom: 7%; height: 52px; touch-action: none; cursor: pointer; }
+  .rail { position: absolute; left: 16px; right: 16px; top: 50%; height: 12px; margin-top: -6px; border-radius: 6px; background: var(--tint); }
+  .thumb { position: absolute; top: 50%; width: 32px; height: 32px; margin: -16px; border-radius: 50%; background: var(--card); border: 3px solid var(--fg); box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
+  .mark { position: absolute; top: -9px; bottom: -9px; width: 0; border-left: 3px dashed var(--fg); margin-left: -1.5px; animation: fade .2s ease both; }
+  .pair { left: 8%; right: 8%; height: 36%; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform .15s; }
+  .pair:active { transform: scale(.98); }
+  .pair b { font-size: clamp(22px, 7cqw, 34px); letter-spacing: -.02em; } .pair span { font-size: clamp(13px, 3.6cqw, 16px); font-weight: 500; }
+  .badge { position: absolute; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 13px; padding: 3px 9px; border-radius: 12px; z-index: 4; white-space: nowrap; animation: fade .2s ease both; }
+  .ring { box-shadow: 0 0 0 4px var(--card), 0 0 0 7px var(--fg); }
+
+  /* ---------- End ---------- */
+  #total { font-size: clamp(110px, 38vw, 190px); line-height: .82; font-weight: 700; letter-spacing: -.06em; font-variant-numeric: tabular-nums; margin-left: -.04em; }
+  #total small { font-size: .2em; letter-spacing: -.02em; color: var(--mut); margin-left: .25em; font-weight: 500; }
+  #rank { font-size: clamp(26px, 7.4vw, 36px); font-weight: 700; letter-spacing: -.03em; margin: 18px 0 14px; color: var(--acc); line-height: 1.05; }
+  #endDots { display: flex; gap: 8px; } #endDots b { width: 16px; height: 16px; }
+  .row { display: flex; gap: 12px; width: 100%; margin-top: 26px; } .row .btn { flex: 1; padding: 0 10px; }
+
+  /* phones on their side: card on the left, words and button on the right */
+  @media (orientation: landscape) and (max-height: 520px) {
+    #app { max-width: none; }
+    #play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; column-gap: 22px; }
+    #timer { grid-column: 1 / -1; } #cardWrap { grid-column: 1; grid-row: 2 / 4; padding: 8px 0 0; }
+    #say { grid-column: 2; grid-row: 2; align-items: center; margin: 0; } #lockBtn { grid-column: 2; grid-row: 3; margin: 0; }
+    h1 { font-size: 54px; } .lede { margin: 8px 0 14px; max-width: none; } #total { font-size: 96px; } #rank { margin: 6px 0 8px; font-size: 24px; } .row { margin-top: 12px; } .btn { height: 48px; } .small { margin-top: 8px; }
+  }
+  @media (max-width: 360px) { header { gap: 8px; } #dots { gap: 4px; } #dots b { width: 8px; height: 8px; } #roundLbl { min-width: 46px; font-size: 15px; } #scoreLbl { min-width: 30px; font-size: 20px; } }
+  @media (prefers-reduced-motion: reduce) { .screen, #card, #chip { animation: none; transition: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand" id="brand"><i></i>Sharp Eye</div>
+    <div id="roundLbl" hidden>1 / 10</div>
+    <div id="dots" hidden></div>
+    <div id="scoreLbl" hidden>0</div>
+    <button id="muteBtn" aria-label="Mute sound"></button>
+  </header>
+
+  <section class="screen center" id="start">
+    <h1>Sharp<br>Eye<span>.</span></h1>
+    <p class="lede">Ten quick tests of your designer's eye. It takes about a minute.</p>
+    <button class="btn" id="startBtn">Start</button>
+    <div class="small" id="bestStart"></div>
+  </section>
+
+  <section class="screen" id="play" hidden>
+    <div id="timer"><i id="timerBar"></i></div>
+    <div id="say" role="status" aria-live="polite"></div>
+    <div id="cardWrap"><div id="card"><div id="stage"></div><div id="chip"></div></div></div>
+    <button class="btn wide" id="lockBtn">Lock in</button>
+  </section>
+
+  <section class="screen center" id="end" hidden>
+    <div id="total">0<small>/ 100</small></div>
+    <div id="rank"></div>
+    <div id="endDots"></div>
+    <div class="small" id="bestEnd"></div>
+    <div class="row"><button class="btn" id="againBtn">Play again</button><button class="btn ghost" id="shareBtn">Share</button></div>
+  </section>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. CONSTANTS
+   ===================================================================== */
+const ROUNDS = 10, ROUND_MS = 8000, REVEAL_MS = 1150, REF = 340;   // REF: card size that pixel tolerances are tuned for
+const RANKS = [[95, 'Pixel Perfectionist'], [85, 'Eagle Eye'], [70, 'Sharp Eye'], [55, 'Decent Eye'], [40, 'Slightly Off-Grid'], [0, 'Needs Glasses']];
+const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>';
+const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>';
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const coin = () => Math.random() < .5;
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function el(cls, parent, css) { const e = document.createElement('div'); if (cls) e.className = cls; if (css) Object.assign(e.style, css); if (parent) parent.appendChild(e); return e; }
+const px = v => v + 'px';
+
+const store = { best: 0, muted: false };
+try { Object.assign(store, JSON.parse(localStorage.getItem('sharpeye.v1') || '{}')); } catch (e) { /* storage unavailable */ }
+function saveStore() { try { localStorage.setItem('sharpeye.v1', JSON.stringify(store)); } catch (e) { /* storage unavailable */ } }
+
+/* =====================================================================
+   2. CHALLENGES
+   Each setup(stage, d, S, k, answer) builds one round inside the card and returns
+   { score() -> { acc: 0..1, label }, reveal() }.  d is difficulty 0..1, S the card size in px,
+   k = S / REF, and answer() is called by tap challenges when the player has chosen.
+   ===================================================================== */
+let locked = true;       // true while inputs should be ignored (between rounds, during the reveal)
+
+function dragRel(stage, onMove) { // drag from anywhere on the card; the finger never has to cover the thing it moves
+  let id = null, lx = 0, ly = 0;
+  stage.onpointerdown = e => { if (locked || id !== null) return; id = e.pointerId; lx = e.clientX; ly = e.clientY; try { stage.setPointerCapture(id); } catch (err) { /* ok */ } const r = stage.getBoundingClientRect(); onMove(0, 0, e.clientX - r.left, e.clientY - r.top, true); e.preventDefault(); };
+  stage.onpointermove = e => { if (e.pointerId !== id || locked) return; const r = stage.getBoundingClientRect(); onMove(e.clientX - lx, e.clientY - ly, e.clientX - r.left, e.clientY - r.top, false); lx = e.clientX; ly = e.clientY; };
+  stage.onpointerup = stage.onpointercancel = e => { if (e.pointerId === id) id = null; };
+}
+function slider(parent, min, max, value, label, bg) {
+  const w = el('slider', parent), rail = el('rail', w), thumb = el('thumb', rail);
+  if (bg) rail.style.background = bg;
+  w.tabIndex = 0; w.setAttribute('role', 'slider'); w.setAttribute('aria-label', label); w.setAttribute('aria-valuemin', min); w.setAttribute('aria-valuemax', max);
+  const api = { value, oninput: null,
+    set(v) { api.value = clamp(v, min, max); thumb.style.left = (api.value - min) / (max - min) * 100 + '%'; w.setAttribute('aria-valuenow', Math.round(api.value)); if (api.oninput) api.oninput(api.value); },
+    mark(v) { el('mark', rail).style.left = (v - min) / (max - min) * 100 + '%'; } };
+  const at = e => { const r = rail.getBoundingClientRect(); api.set(min + (e.clientX - r.left) / r.width * (max - min)); };
+  let id = null;
+  w.addEventListener('pointerdown', e => { if (locked) return; id = e.pointerId; try { w.setPointerCapture(id); } catch (err) { /* ok */ } at(e); e.preventDefault(); });
+  w.addEventListener('pointermove', e => { if (e.pointerId === id && !locked) at(e); });
+  const end = e => { if (e.pointerId === id) id = null; }; w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
+  w.addEventListener('keydown', e => { if (locked) return; const st = (max - min) / 120; if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') api.set(api.value - st); if (e.key === 'ArrowRight' || e.key === 'ArrowUp') api.set(api.value + st); });
+  return api;
+}
+// colour helpers for the contrast round
+function hslRgb(h, s, l) { s /= 100; l /= 100; const a = s * Math.min(l, 1 - l), f = n => { const q = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(q - 3, 9 - q, 1)); }; return [f(0), f(8), f(4)]; }
+function lum([r, g, b]) { const f = c => c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); }
+function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+const css = (h, s, l) => `hsl(${h.toFixed(1)} ${s.toFixed(1)}% ${l.toFixed(1)}%)`;
+
+const CHALLENGES = {
+  centre: { say: 'Drag the dot to the exact centre of the shape', adjust: true,
+    setup(st, d, S, k) {
+      const w = S * rand(.42, .7), h = S * rand(.36, .62), x0 = rand(S * .06, S * .94 - w), y0 = rand(S * .06, S * .8 - h), cx = x0 + w / 2, cy = y0 + h / 2;
+      el('abs', st, { left: px(x0), top: px(y0), width: px(w), height: px(h), background: 'var(--tint)', border: '2.5px solid var(--fg)', borderRadius: pick(['0', '50%', '22px']) });
+      let x, y; do { x = rand(x0 + 14, x0 + w - 14); y = rand(y0 + 14, y0 + h - 14); } while (Math.hypot(x - cx, y - cy) < Math.min(w, h) * .28);
+      const dot = el('abs dot', st), put = () => { dot.style.left = px(x); dot.style.top = px(y); }; put();
+      dragRel(st, (dx, dy) => { x = clamp(x + dx, 10, S - 10); y = clamp(y + dy, 10, S - 10); put(); });
+      return { score() { const e = Math.hypot(x - cx, y - cy) / k; return { acc: clamp(1 - (e - 1.2) / 26, 0, 1), label: e < 1.5 ? 'Dead centre' : Math.round(e) + 'px off' }; },
+        reveal() { el('abs truth', st, { left: px(cx - 26), top: px(cy), width: '52px', borderTopWidth: '2px' }); el('abs truth', st, { left: px(cx), top: px(cy - 26), height: '52px', borderLeftWidth: '2px' }); } };
+    } },
+  colour: { say: 'Slide to match the colour on the left', adjust: true,
+    setup(st, d, S) {
+      const target = rand(0, 360), sw = (left, lbl, hue) => { const b = el('abs', st, { left, top: '8%', width: '39%', height: '50%', borderRadius: '18px', background: css(hue, 72, 56) }); el('abs tag', st, { left, top: '60%', width: '39%' }).textContent = lbl; return b; };
+      sw('8%', 'Target', target); const mine = sw('53%', 'Yours', 0);
+      const sl = slider(st, 0, 360, 0, 'Hue', 'linear-gradient(90deg,' + Array.from({ length: 13 }, (_, i) => `hsl(${i * 30} 72% 56%)`).join(',') + ')');
+      sl.oninput = v => { mine.style.background = css(v, 72, 56); }; sl.set((target + rand(90, 270)) % 360);
+      const diff = () => { const a = Math.abs(sl.value - target) % 360; return Math.min(a, 360 - a); };
+      return { score() { const e = diff(); return { acc: clamp(1 - (e - 2) / 34, 0, 1), label: e < 3 ? 'Spot on' : Math.round(e) + '° off' }; }, reveal() { sl.mark(target); } };
+    } },
+  odd: { say: 'Tap the tile that is a different shade',
+    setup(st, d, S, k, answer) {
+      const hue = rand(0, 360), base = rand(42, 62), delta = lerp(8, 2.6, d) * (coin() ? 1 : -1), oddI = Math.floor(rand(0, 9)), g = S * .06, t = (S - g * 4) / 3, tiles = []; let chosen = -1;
+      for (let i = 0; i < 9; i++) { const b = document.createElement('button'); b.className = 'abs tile'; Object.assign(b.style, { left: px(g + (i % 3) * (t + g)), top: px(g + Math.floor(i / 3) * (t + g)), width: px(t), height: px(t), background: css(hue, 58, base + (i === oddI ? delta : 0)) }); b.setAttribute('aria-label', 'Tile ' + (i + 1)); b.onclick = () => { if (locked) return; chosen = i; answer(); }; st.appendChild(b); tiles.push(b); }
+      return { score() { return { acc: chosen === oddI ? 1 : 0, label: chosen === oddI ? 'Got it' : chosen < 0 ? 'Time’s up' : 'Not that one' }; },
+        reveal() { tiles.forEach((b, i) => { if (i === oddI) b.classList.add('ring'); else b.style.opacity = i === chosen ? '.55' : '.3'; }); } };
+    } },
+  bigger: { say: 'Tap the bigger circle',
+    setup(st, d, S, k, answer) {
+      const base = S * rand(.3, .37), ratio = 1 + lerp(.11, .035, d), bigLeft = coin(), sizes = bigLeft ? [base * ratio, base] : [base, base * ratio], els = []; let chosen = -1;
+      sizes.forEach((dia, i) => { const b = document.createElement('button'), cx = S * (i ? .73 : .27), cy = S * (.46 + rand(-.09, .09)); b.className = 'abs'; Object.assign(b.style, { left: px(cx - dia / 2), top: px(cy - dia / 2), width: px(dia), height: px(dia), borderRadius: '50%', background: 'var(--fg)' }); b.setAttribute('aria-label', i ? 'Right circle' : 'Left circle'); b.onclick = () => { if (locked) return; chosen = i; answer(); }; st.appendChild(b); els.push({ b, cx, cy, dia }); });
+      const right = bigLeft ? 0 : 1;
+      return { score() { return { acc: chosen === right ? 1 : 0, label: chosen === right ? 'Correct' : chosen < 0 ? 'Time’s up' : 'Other one' }; },
+        reveal() { els.forEach((o, i) => { if (i === right) o.b.classList.add('ring'); else o.b.style.opacity = '.35'; const t = el('badge', st, { left: px(o.cx), top: px(o.cy + o.dia / 2 + 12), transform: 'translateX(-50%)' }); t.textContent = Math.round(o.dia / k) + 'px'; }); } };
+    } },
+  level: { say: 'Drag up or down to make the line perfectly level', adjust: true,
+    setup(st, d, S) {
+      let a = rand(3, 8) * (coin() ? 1 : -1); const line = el('abs', st, { left: '14%', top: '46%', width: '72%', height: '6px', marginTop: '-3px', borderRadius: '3px', background: 'var(--fg)' });
+      for (const s of ['left', 'right']) el('abs', line, { [s]: '-7px', top: '-5px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--acc)' });
+      const put = () => { line.style.transform = `rotate(${a}deg)`; }; put(); let side = 1;
+      dragRel(st, (dx, dy, x, y, first) => { if (first) side = x >= S / 2 ? 1 : -1; a = clamp(a + side * dy * .07, -14, 14); put(); });
+      return { score() { const e = Math.abs(a); return { acc: clamp(1 - (e - .15) / 3.2, 0, 1), label: e < .2 ? 'Perfectly level' : e.toFixed(1) + '° off' }; },
+        reveal() { el('abs truth', st, { left: '8%', top: '46%', width: '84%', borderTopWidth: '2px' }); } };
+    } },
+  spacing: { say: 'Drag the middle bar until both gaps are equal', adjust: true,
+    setup(st, d, S, k) {
+      const w = S * .07, L = S * rand(.07, .2), R = S * rand(.73, .86), mid = (L + R) / 2, top = S * .2, h = S * .5, lo = L + w + 6, hi = R - w - 6;
+      const bar = (x, acc) => el('abs', st, { left: px(x), top: px(top), width: px(w), height: px(h), borderRadius: '6px', background: acc ? 'var(--acc)' : 'var(--fg)' });
+      bar(L); bar(R); let m; do { m = rand(lo, hi); } while (Math.abs(m - mid) < S * .09); const b = bar(m, true);
+      dragRel(st, dx => { m = clamp(m + dx, lo, hi); b.style.left = px(m); });
+      return { score() { const e = Math.abs(m - mid) / k; return { acc: clamp(1 - (e - 1) / 22, 0, 1), label: e < 1.3 ? 'Perfectly even' : Math.round(e) + 'px off' }; },
+        reveal() { el('abs truth', st, { left: px(mid), top: px(top - 10), width: px(w), height: px(h + 20), borderWidth: '2px', borderRadius: '6px' }); } };
+    } },
+  radius: { say: 'Slide to match the corner rounding on the left', adjust: true,
+    setup(st, d, S, k) {
+      const box = S * .36, target = box * rand(.07, .44);
+      const mk = (left, lbl) => { const b = el('abs', st, { left: px(left), top: px(S * .12), width: px(box), height: px(box), background: 'var(--fg)' }); el('abs tag', st, { left: px(left), top: px(S * .12 + box + 10), width: px(box) }).textContent = lbl; return b; };
+      mk(S * .09, 'Target').style.borderRadius = px(target); const mine = mk(S * .55, 'Yours'), sl = slider(st, 0, box / 2, 0, 'Corner radius');
+      sl.oninput = v => { mine.style.borderRadius = px(v); }; let s0; do { s0 = rand(0, box / 2); } while (Math.abs(s0 - target) < box * .15); sl.set(s0);
+      return { score() { const e = Math.abs(sl.value - target) / k; return { acc: clamp(1 - (e - 1) / 15, 0, 1), label: e < 1.3 ? 'Exact match' : Math.round(e) + 'px off' }; },
+        reveal() { sl.mark(target); el('abs truth', st, { left: px(S * .55 - 5), top: px(S * .12 - 5), width: px(box + 10), height: px(box + 10), borderWidth: '2.5px', borderColor: 'var(--acc)', borderRadius: px(target + 5) }); } };
+    } },
+  contrast: { say: 'Tap the one that is easier to read',
+    setup(st, d, S, k, answer) {
+      const make = want => { for (let tries = 0; tries < 40; tries++) { const h = rand(0, 360), bl = rand(22, 78), bgc = [h, rand(25, 65), bl], bgRgb = hslRgb(...bgc), th = (h + rand(-40, 40) + 360) % 360, ts = rand(20, 70); let best = null;
+        for (let l = 2; l <= 98; l += 1) { const c = contrast(bgRgb, hslRgb(th, ts, l)), err = Math.abs(c - want); if (!best || err < best.err) best = { err, c, l }; }
+        if (best.err < .12) return { bg: css(...bgc), fg: css(th, ts, best.l), c: best.c }; } return { bg: '#777', fg: '#999', c: 1.6 }; };
+      const low = rand(1.5, 2.6), hi = low * (1 + lerp(.95, .3, d)), pairs = coin() ? [make(low), make(hi)] : [make(hi), make(low)], right = pairs[0].c > pairs[1].c ? 0 : 1, els = []; let chosen = -1;
+      pairs.forEach((p, i) => { const b = document.createElement('button'); b.className = 'abs pair'; Object.assign(b.style, { top: i ? '54%' : '10%', background: p.bg, color: p.fg }); b.innerHTML = '<b>Readable text</b><span>The quick brown fox jumps over</span>'; b.setAttribute('aria-label', i ? 'Bottom sample' : 'Top sample'); b.onclick = () => { if (locked) return; chosen = i; answer(); }; st.appendChild(b); els.push(b); });
+      return { score() { return { acc: chosen === right ? 1 : 0, label: chosen === right ? 'Correct' : chosen < 0 ? 'Time’s up' : 'Other one' }; },
+        reveal() { els.forEach((b, i) => { if (i === right) b.classList.add('ring'); else b.style.opacity = '.45'; el('badge', st, { right: '11%', top: i ? 'calc(54% + 8px)' : 'calc(10% + 8px)' }).textContent = pairs[i].c.toFixed(1) + ' : 1'; }); } };
+    } }
+};
+
+/* =====================================================================
+   3. SCORING + ROUND FLOW
+   ===================================================================== */
+const G = { order: [], i: -1, results: [], total: 0, cur: null, t0: 0, raf: 0, live: false };
+
+function buildOrder() { // every type at least once, ten rounds, never the same type twice in a row
+  const types = Object.keys(CHALLENGES); let order;
+  do { order = types.slice().sort(() => Math.random() - .5); while (order.length < ROUNDS) order.splice(Math.floor(rand(0, order.length + 1)), 0, pick(types)); } while (order.some((t, i) => i && t === order[i - 1]));
+  return order;
+}
+const grade = pts => pts >= 8 ? 'good' : pts >= 5 ? 'mid' : 'bad';
+
+function startGame() {
+  Sound.init(); G.order = buildOrder(); G.i = -1; G.results = []; G.total = 0;
+  $('dots').innerHTML = '<b></b>'.repeat(ROUNDS); $('scoreLbl').textContent = '0';
+  show('play'); nextRound();
+}
+function nextRound() {
+  G.i++; if (G.i >= ROUNDS) return endGame();
+  const card = $('card'), stage = $('stage'), def = CHALLENGES[G.order[G.i]];
+  card.classList.add('leave');
+  setTimeout(() => {
+    stage.innerHTML = ''; stage.onpointerdown = stage.onpointermove = stage.onpointerup = stage.onpointercancel = null; $('chip').classList.remove('on');
+    card.classList.remove('leave'); card.classList.add('enter'); void card.offsetWidth;
+    const S = stage.getBoundingClientRect().width;
+    G.cur = def.setup(stage, G.i / (ROUNDS - 1), S, S / REF, () => finishRound(false));
+    $('say').textContent = def.say; $('roundLbl').textContent = (G.i + 1) + ' / ' + ROUNDS;
+    $('lockBtn').classList.toggle('off', !def.adjust);
+    [...$('dots').children].forEach((b, n) => b.classList.toggle('now', n === G.i));
+    card.classList.remove('enter'); Sound.tick();
+    locked = false; G.live = true; G.t0 = performance.now(); cancelAnimationFrame(G.raf); G.raf = requestAnimationFrame(tickTimer);
+  }, G.i === 0 ? 0 : 200);
+}
+function tickTimer(now) {
+  if (!G.live) return; const left = clamp(1 - (now - G.t0) / ROUND_MS, 0, 1);
+  $('timerBar').style.transform = `scaleX(${left})`;
+  if (left <= 0) return finishRound(true);
+  G.raf = requestAnimationFrame(tickTimer);
+}
+function finishRound(timedOut) {
+  if (!G.live) return; G.live = false; locked = true; cancelAnimationFrame(G.raf);
+  const left = timedOut ? 0 : clamp(1 - (performance.now() - G.t0) / ROUND_MS, 0, 1), res = G.cur.score();
+  const pts = Math.round(res.acc * 9 + res.acc * left), g = grade(pts);   // up to 9 for accuracy, plus up to 1 for speed
+  G.results.push(pts); G.total += pts; G.cur.reveal();
+  const chip = $('chip'); chip.innerHTML = ''; chip.append(document.createTextNode(res.label)); const em = document.createElement('em'); em.textContent = '+' + pts; em.style.background = `var(--${g})`; chip.appendChild(em); chip.classList.add('on');
+  const dot = $('dots').children[G.i]; dot.classList.remove('now'); dot.classList.add(g); $('scoreLbl').textContent = G.total;
+  Sound.result(g); buzz(g === 'bad' ? [30, 40, 30] : 12);
+  setTimeout(nextRound, REVEAL_MS);
+}
+function endGame() {
+  const total = G.total, rank = RANKS.find(r => total >= r[0])[1], isBest = total > store.best;
+  if (isBest) { store.best = total; saveStore(); }
+  $('rank').textContent = rank; $('endDots').innerHTML = G.results.map(p => `<b class="${grade(p)}"></b>`).join('');
+  $('bestEnd').textContent = isBest ? 'New best score.' : 'Best so far: ' + store.best; $('shareBtn').textContent = 'Share';
+  show('end'); Sound.flourish();
+  const t0 = performance.now(), num = $('total').firstChild; (function up(now) { const k = clamp((now - t0) / 700, 0, 1); num.nodeValue = Math.round(total * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(up); })(t0);
+}
+
+/* =====================================================================
+   4. UI
+   ===================================================================== */
+function show(id) {
+  for (const s of ['start', 'play', 'end']) $(s).hidden = s !== id;      // hidden screens are display:none, so they cannot be clicked
+  const playing = id === 'play'; document.getElementById('app').classList.toggle('playing', playing);
+  $('brand').hidden = playing; $('roundLbl').hidden = $('dots').hidden = $('scoreLbl').hidden = !playing;
+  $('bestStart').textContent = store.best ? 'Your best: ' + store.best + ' / 100' : '';
+}
+function share() {
+  const rank = $('rank').textContent, sq = { good: '🟢', mid: '🟡', bad: '🔴' };
+  const text = `Sharp Eye: ${G.total}/100 — ${rank}\n${G.results.map(p => sq[grade(p)]).join('')}`;
+  const done = ok => { $('shareBtn').textContent = ok ? 'Copied' : 'Could not copy'; setTimeout(() => { $('shareBtn').textContent = 'Share'; }, 1600); };
+  const fallback = () => { try { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); const ok = document.execCommand('copy'); t.remove(); done(ok); } catch (e) { done(false); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback); else fallback();
+}
+const buzz = p => { try { if (navigator.vibrate && !store.muted) navigator.vibrate(p); } catch (e) { /* no haptics */ } };
+function refreshMute() { $('muteBtn').innerHTML = store.muted ? ICON_OFF : ICON_ON; $('muteBtn').setAttribute('aria-label', store.muted ? 'Unmute sound' : 'Mute sound'); }
+
+/* =====================================================================
+   5. AUDIO (Web Audio, synthesised)
+   ===================================================================== */
+const Sound = (() => {
+  let ac = null; const ok = () => ac && !store.muted;
+  function init() { if (ac) { if (ac.state === 'suspended') ac.resume(); return; } try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+  function tone(type, f, t, d, vol, f1) { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + d); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .05); }
+  return { init,
+    tick() { if (ok()) tone('sine', 880, ac.currentTime, .06, .05); },
+    result(g) { if (!ok()) return; const t = ac.currentTime; if (g === 'good') { tone('sine', 880, t, .35, .09); tone('sine', 1318.5, t + .08, .45, .08); } else if (g === 'mid') tone('sine', 660, t, .3, .08); else tone('triangle', 196, t, .32, .12, 150); },
+    flourish() { if (!ok()) return; const t = ac.currentTime; [523.25, 659.25, 784, 1046.5, 1318.5].forEach((f, i) => tone('sine', f, t + i * .09, .5, .07)); }
+  };
+})();
+
+/* =====================================================================
+   6. WIRING
+   ===================================================================== */
+$('startBtn').addEventListener('click', startGame);
+$('againBtn').addEventListener('click', startGame);
+$('shareBtn').addEventListener('click', share);
+$('lockBtn').addEventListener('click', () => { if (!locked) finishRound(false); });
+$('muteBtn').addEventListener('click', () => { store.muted = !store.muted; saveStore(); refreshMute(); Sound.init(); });
+window.addEventListener('keydown', e => { if (e.key === 'Enter' && !$('play').hidden && !locked && CHALLENGES[G.order[G.i]].adjust && document.activeElement.tagName !== 'BUTTON') finishRound(false); });
+document.addEventListener('gesturestart', e => e.preventDefault());
+refreshMute(); show('start');
+</script>
+</body>
+</html>
