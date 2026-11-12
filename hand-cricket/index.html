@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Hand Cricket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Gochi+Hand&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2b2622; --board: #23262b; --plate: #f7f3e6; --you: #2f7fd0; --them: #d9534a; --gold: #f2c230;
+    --ui: "Baloo 2", "Trebuchet MS", system-ui, sans-serif; --chalk: "Gochi Hand", "Comic Sans MS", cursive;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #3a2e26; font-family: var(--ui); color: var(--ink);
+    -webkit-text-size-adjust: 100%; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+  button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  #app { height: 100dvh; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; background: #caa77a;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-shadow: 0 0 60px rgba(0, 0, 0, .5); }
+
+  /* ---------- Tin scoreboard ---------- */
+  #score { flex: 0 0 auto; background: linear-gradient(180deg, #2c3036, var(--board)); color: #fff; padding: 10px 12px 9px; border-bottom: 5px solid #14161a; position: relative; }
+  .teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding-right: 46px; }
+  .team { background: #15171b; border-radius: 10px; padding: 5px 10px 4px; border: 2px solid #3a3f47; min-width: 0; transition: border-color .25s, box-shadow .25s; }
+  .team.bat { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(242, 194, 48, .25); }
+  .team .nm { font: 800 12px/1.1 var(--ui); letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team .nm i { flex: 0 0 9px; height: 9px; border-radius: 50%; }
+  .team.t0 .nm i { background: var(--you); } .team.t1 .nm i { background: var(--them); }
+  .team .nm em { font-style: normal; font-size: 10px; background: var(--gold); color: #2b2200; border-radius: 6px; padding: 0 5px; display: none; }
+  .team.bat .nm em { display: inline; }
+  .team .rn { font: 800 30px/1 var(--ui); color: var(--plate); font-variant-numeric: tabular-nums; }
+  .team .rn small { font-size: 14px; font-weight: 700; color: #aab0b9; margin-left: 5px; }
+  .vs { font: 800 12px var(--ui); color: #8d949e; }
+  #status { margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 26px; }
+  #target { font: 700 13px/1.15 var(--ui); color: var(--gold); }
+  #chips { display: flex; gap: 4px; flex-wrap: nowrap; overflow: hidden; justify-content: flex-end; }
+  #chips b { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--plate); color: #23262b; font: 800 13px/24px var(--ui); text-align: center; }
+  #chips b.w { background: var(--them); color: #fff; } #chips b.b { background: var(--gold); }
+  #muteBtn { position: absolute; right: 10px; top: 12px; width: 38px; height: 38px; border-radius: 50%; background: #15171b; border: 2px solid #3a3f47; color: #fff; font-size: 17px; line-height: 1; }
+
+  /* ---------- Arena ---------- */
+  #arena { flex: 1 1 auto; min-height: 120px; position: relative; overflow: hidden; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #pop { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font: 400 clamp(46px, 15vw, 84px)/1 var(--chalk); color: #fff; white-space: nowrap; pointer-events: none; opacity: 0;
+    text-shadow: 3px 3px 0 #5a2f12, -2px -2px 0 #5a2f12, 2px -2px 0 #5a2f12, -2px 2px 0 #5a2f12, 0 8px 16px rgba(0, 0, 0, .35); }
+  #pop.go { animation: pop 1.15s ease-out both; } #pop.out { color: #ffd0c8; } #pop.big { color: #ffe36b; }
+  @keyframes pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.2) rotate(-12deg); } 22% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); } 34% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -90%) scale(1) rotate(-3deg); } }
+
+  /* ---------- Prompt + pad ---------- */
+  #prompt { flex: 0 0 auto; text-align: center; font: 700 17px/1.2 var(--ui); padding: 9px 12px 3px; color: #3a2a18; min-height: 40px; }
+  #prompt b { color: #8f2a1f; }
+  #pad { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; padding: 6px 12px 14px; }
+  #pad.choices { grid-template-columns: repeat(2, 1fr); } #pad.one { grid-template-columns: 1fr; }
+  .key { position: relative; height: clamp(54px, 9.4dvh, 78px); border-radius: 16px; background: linear-gradient(180deg, #fffdf4, #efe6cf); color: #23262b; font: 800 clamp(26px, 5dvh, 36px)/1 var(--ui);
+    box-shadow: 0 5px 0 #a98a5a, 0 10px 14px rgba(70, 45, 15, .25); transition: transform .07s, box-shadow .07s, opacity .2s; }
+  .key small { position: absolute; right: 9px; bottom: 6px; font: 700 10px var(--ui); color: #8a7a60; letter-spacing: .03em; }
+  .key:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 #a98a5a; }
+  .key:disabled { opacity: .45; cursor: default; }
+  .key.c { font-size: clamp(19px, 3.6dvh, 24px); color: #fff; background: linear-gradient(180deg, #4a97e0, var(--you)); box-shadow: 0 5px 0 #1f5a98, 0 10px 14px rgba(20, 50, 90, .28); }
+  .key.c.alt { background: linear-gradient(180deg, #e7786f, var(--them)); box-shadow: 0 5px 0 #9c342e, 0 10px 14px rgba(90, 30, 20, .28); }
+  .key.c.go { background: linear-gradient(180deg, #7cc46e, #4f9b4a); box-shadow: 0 5px 0 #357233, 0 10px 14px rgba(30, 70, 30, .28); }
+  .key.c:active:not(:disabled) { box-shadow: 0 1px 0 rgba(0, 0, 0, .4); }
+  .key.c small { position: static; display: block; color: rgba(255, 255, 255, .85); font-size: 12px; margin-top: 3px; }
+
+  /* ---------- Overlay cards ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(40, 28, 20, .62); overflow-y: auto; }
+  .overlay.on { display: flex; }
+  .card { width: min(100%, 400px); margin: auto; background: var(--plate); border-radius: 22px; padding: 22px 22px 20px; text-align: center; border: 5px solid #7a4b2a; box-shadow: 0 8px 0 #4f2f18, 0 22px 40px rgba(0, 0, 0, .4); animation: cardIn .4s cubic-bezier(.3, 1.5, .5, 1) both; }
+  @keyframes cardIn { from { transform: scale(.7) rotate(-3deg); opacity: 0; } }
+  .card h1 { font: 400 clamp(44px, 13vw, 60px)/.95 var(--chalk); margin: 0 0 6px; color: #7a2b1c; }
+  .card h2 { font: 400 clamp(32px, 9vw, 42px)/1 var(--chalk); margin: 0 0 6px; color: #7a2b1c; }
+  .card p { font: 500 16px/1.35 var(--ui); margin: 6px 0; color: #4a3f34; }
+  .rules { text-align: left; background: #fff; border-radius: 14px; padding: 10px 14px; margin: 12px 0; font: 500 15px/1.4 var(--ui); color: #4a3f34; }
+  .rules b { color: #7a2b1c; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: #e2d8bf; border-radius: 14px; padding: 4px; margin: 10px 0; }
+  .seg button { background: transparent; border-radius: 11px; padding: 7px 4px; font: 700 15px var(--ui); color: #6a5c48; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 2px 0 rgba(90, 60, 30, .3); }
+  .card .key { width: 100%; margin-top: 10px; height: 58px; }
+  .mini { font: 700 13px var(--ui); color: #8a7a60; margin-top: 12px; }
+  .big { font-size: 58px; line-height: 1; }
+  .line { display: flex; justify-content: space-between; background: #fff; border-radius: 12px; padding: 7px 14px; margin-top: 7px; font: 700 16px var(--ui); }
+  .line span:last-child { font-weight: 800; }
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
+
+  /* phones on their side: arena on the left, controls on the right */
+  @media (orientation: landscape) and (max-height: 520px) {
+    #app { max-width: none; display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto 1fr; }
+    #arena { grid-column: 1; grid-row: 1 / -1; }
+    #score { grid-column: 2; grid-row: 1; padding: 6px 10px; }
+    .team .rn { font-size: 22px; } #status { margin-top: 4px; }
+    #prompt { grid-column: 2; grid-row: 2; font-size: 15px; padding: 6px 10px 2px; min-height: 0; }
+    #pad { grid-column: 2; grid-row: 3; align-content: center; padding: 4px 10px 8px; gap: 7px; }
+    .key { height: clamp(40px, 17dvh, 64px); }
+    .card { padding: 12px 18px; } .card h1 { font-size: 36px; } .rules { margin: 6px 0; padding: 6px 12px; font-size: 13px; } .card .key { height: 44px; margin-top: 6px; } .big { font-size: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #pop.go, .card { animation-duration: .01s; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="score">
+    <div class="teams">
+      <div class="team t0" id="team0"><div class="nm"><i></i><span id="nm0">You</span><em>BAT</em></div><div class="rn" id="rn0">0/0<small>0.0</small></div></div>
+      <div class="vs">VS</div>
+      <div class="team t1" id="team1"><div class="nm"><i></i><span id="nm1">Computer</span><em>BAT</em></div><div class="rn" id="rn1">0/0<small>0.0</small></div></div>
+    </div>
+    <div id="status"><div id="target"></div><div id="chips"></div></div>
+    <button id="muteBtn" aria-label="Mute sound">🔊</button>
+  </header>
+  <main id="arena"><canvas id="cv"></canvas><div id="pop"></div></main>
+  <div id="prompt" role="status" aria-live="polite"></div>
+  <div id="pad"></div>
+</div>
+
+<div class="overlay on" id="menu"><div class="card">
+  <h1>Hand Cricket</h1>
+  <p>The free-period classic. No bat, no ball, just fingers.</p>
+  <div class="rules">
+    <b>1.</b> You both show a number from 1 to 6 at the same time.<br>
+    <b>2.</b> Different numbers: the batter scores their number.<br>
+    <b>3.</b> Same number: <b>OUT!</b><br>
+    <b>4.</b> Then swap. Beat the other score to win.
+  </div>
+  <div class="seg" id="wkSeg"><button data-w="1" aria-pressed="true">1 wicket · quick</button><button data-w="3" aria-pressed="false">3 wickets · longer</button></div>
+  <button class="key c" id="cpuBtn">Play vs Computer</button>
+  <button class="key c alt" id="twoBtn">2 Players<small>pass the phone, pick in secret</small></button>
+  <div class="mini" id="statLine"></div>
+</div></div>
+
+<div class="overlay" id="result"><div class="card">
+  <div class="big" id="resIcon">🏆</div>
+  <h2 id="resTitle"></h2><p id="resMsg"></p>
+  <div class="line"><span id="resN0"></span><span id="resS0"></span></div>
+  <div class="line"><span id="resN1"></span><span id="resS1"></span></div>
+  <button class="key c go" id="againBtn">Play again</button>
+  <button class="key c" id="menuBtn" style="height:46px;font-size:17px">Change mode</button>
+  <div class="mini" id="resStat"></div>
+</div></div>
+<canvas id="fx"></canvas>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. CONSTANTS
+   ===================================================================== */
+const SHAKE_TIME = 0.78, REVEAL_TIME = 1.0, OUT_TIME = 1.5;   // seconds
+const COL = ['#2f7fd0', '#d9534a'];
+const SKIN = [['#f0c49a', '#d79f72', '#8a5a3c'], ['#e2ad80', '#c58a5c', '#7a4c30']];
+const SLEEVE = [['#eef3fb', '#2f7fd0'], ['#fff3ee', '#d9534a']];
+const FINGER_X = [-36, -12, 12, 36], FINGER_LEN = [64, 74, 68, 52], FOLD = 13;
+const TAU = Math.PI * 2;
+
+/* =====================================================================
+   2. UTILITIES + STORAGE
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd6 = () => 1 + Math.floor(Math.random() * 6);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const easeOut = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const buzz = ms => { try { if (navigator.vibrate && !store.muted) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
+const overs = b => Math.floor(b / 6) + '.' + (b % 6);
+const store = { played: 0, won: 0, high: 0, muted: false };
+try { Object.assign(store, JSON.parse(localStorage.getItem('handcricket.v1') || '{}')); } catch (e) { /* storage unavailable */ }
+function saveStore() { try { localStorage.setItem('handcricket.v1', JSON.stringify(store)); } catch (e) { /* storage unavailable */ } }
+
+/* =====================================================================
+   3. AUDIO (Web Audio, synthesised)
+   ===================================================================== */
+const Sound = (() => {
+  let ac = null, noiseBuf;
+  const ok = () => ac && !store.muted;
+  function init() { if (ac) { if (ac.state === 'suspended') ac.resume(); return; } try { ac = new (window.AudioContext || window.webkitAudioContext)(); noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
+  function env(t, a, peak, d) { const g = ac.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + d); g.connect(ac.destination); return g; }
+  function tone(type, f0, f1, t, d, vol) { const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + d); o.connect(env(t, .006, vol, d)); o.start(t); o.stop(t + d + .05); }
+  function hiss(freq, q, t, a, d, vol) { const n = ac.createBufferSource(), f = ac.createBiquadFilter(); n.buffer = noiseBuf; n.loop = true; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; n.connect(f).connect(env(t, a, vol, d)); n.start(t); n.stop(t + a + d + .05); }
+  return {
+    init,
+    tick(i) { if (!ok()) return; tone('square', 520 + i * 90, 0, ac.currentTime, .05, .05); },
+    tap() { if (!ok()) return; tone('sine', 700, 500, ac.currentTime, .05, .06); },
+    bat(n) { if (!ok()) return; const t = ac.currentTime; tone('sine', 230, 120, t, .09, .3); tone('triangle', 700, 400, t, .03, .14); hiss(1200, 1.2, t, .003, .03, .2); if (n >= 4) { hiss(1500, .5, t + .08, .25, n === 6 ? 1.3 : .8, n === 6 ? .16 : .1); [660, 880, n === 6 ? 1320 : 990].forEach((f, i) => tone('triangle', f, 0, t + .1 + i * .09, .16, .07)); } },
+    out() { if (!ok()) return; const t = ac.currentTime; hiss(700, .6, t, .05, .9, .14); [392, 330, 262, 196].forEach((f, i) => tone('sawtooth', f, f * .94, t + i * .13, .16, .06)); },
+    toss() { if (!ok()) return; const t = ac.currentTime; [1400, 1900, 1400, 2100].forEach((f, i) => tone('sine', f, 0, t + i * .07, .08, .05)); },
+    win() { if (!ok()) return; const t = ac.currentTime; hiss(1500, .5, t, .3, 2.2, .14); [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => { tone('square', f, 0, t + i * .13, .2, .05); tone('triangle', f / 2, 0, t + i * .13, .2, .07); }); },
+    lose() { if (!ok()) return; const t = ac.currentTime; [392, 349, 311, 262].forEach((f, i) => tone('triangle', f, 0, t + i * .22, .35, .08)); }
+  };
+})();
+
+/* =====================================================================
+   4. DRAWING: hands and the gully backdrop
+   ===================================================================== */
+const cv = $('cv'), ctx = cv.getContext('2d'), bg = document.createElement('canvas');
+const view = { w: 0, h: 0, dpr: 1 };
+const anim = { state: 'idle', t: 0, n: [0, 0], shown: [0, 0], ticks: 0, hold: REVEAL_TIME, done: null, time: 0 };
+
+function rr(c, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.arcTo(x + w, y, x + w, y + r, r); c.lineTo(x + w, y + h - r); c.arcTo(x + w, y + h, x + w - r, y + h, r); c.lineTo(x + r, y + h); c.arcTo(x, y + h, x, y + h - r, r); c.lineTo(x, y + r); c.arcTo(x, y, x + r, y, r); c.closePath(); }
+
+// A hand seen from the back, fingers up. n = 0 is a fist; 6 is thumb only. ext is 0..1 (how far the fingers have opened).
+function drawHand(c, who, n, ext, armLen) {
+  const [skin, shade, line] = SKIN[who], [cuff, stripe] = SLEEVE[who];
+  c.lineJoin = c.lineCap = 'round'; c.lineWidth = 3.2; c.strokeStyle = line;
+  const grad = (x0, x1) => { const g = c.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, skin); g.addColorStop(1, shade); return g; };
+  // forearm + shirt cuff
+  c.fillStyle = grad(-34, 34); rr(c, -32, -8, 64, armLen, 10); c.fill(); c.stroke();
+  c.fillStyle = cuff; rr(c, -45, 40, 90, armLen, 12); c.fill(); c.stroke();
+  c.fillStyle = stripe; c.fillRect(-43.500, 52, 87, 9); c.fillStyle = 'rgba(0,0,0,.08)'; c.fillRect(-43.500, 61, 87, 3);
+  // fingers behind the palm edge
+  for (let i = 0; i < 4; i++) {
+    const up = n >= 1 && n <= 5 && i < Math.min(n, 4), len = lerp(FOLD, FINGER_LEN[i], up ? ext : 0), x = FINGER_X[i], w = 22;
+    c.fillStyle = grad(x - 11, x + 11); rr(c, x - w / 2, -92 - len, w, len + 22, 11); c.fill(); c.stroke();
+    if (up && ext > .6) { c.fillStyle = 'rgba(255,240,225,.75)'; rr(c, x - 6.500, -92 - len + 5, 13, 12, 5); c.fill(); c.strokeStyle = 'rgba(120,70,40,.35)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - 6, -92 - len * .45); c.lineTo(x + 6, -92 - len * .45); c.stroke(); c.strokeStyle = line; c.lineWidth = 3.2; }
+  }
+  // thumb (on the inner side)
+  const tUp = n >= 5, tl = lerp(15, 50, tUp ? ext : 0);
+  c.save(); c.translate(-46, -42); c.rotate(lerp(-.25, -.95, tUp ? ext : 0)); c.fillStyle = grad(-12, 12); rr(c, -12, -tl - 6, 24, tl + 26, 12); c.fill(); c.stroke();
+  if (tUp && ext > .6) { c.fillStyle = 'rgba(255,240,225,.75)'; rr(c, -7, -tl - 1, 14, 13, 5); c.fill(); }
+  c.restore();
+  // palm
+  c.fillStyle = grad(-50, 50); rr(c, -50, -98, 100, 104, 28); c.fill(); c.stroke();
+  c.strokeStyle = 'rgba(120,70,40,.3)'; c.lineWidth = 2; c.beginPath();
+  for (const x of FINGER_X) { c.moveTo(x - 7, -84); c.quadraticCurveTo(x, -79, x + 7, -84); }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.14)'; c.beginPath(); c.ellipse(-16, -56, 22, 30, .3, 0, TAU); c.fill();
+}
+
+function buildBackdrop() { // a lane wall with chalk stumps, painted once per resize
+  const { w, h, dpr } = view; bg.width = cv.width; bg.height = cv.height; const c = bg.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const wallTop = h * .14, wallBot = h * .7;
+  let g = c.createLinearGradient(0, 0, 0, wallTop + 30); g.addColorStop(0, '#8fcdf0'); g.addColorStop(1, '#fde7c4'); c.fillStyle = g; c.fillRect(0, 0, w, wallTop + 30);
+  c.fillStyle = 'rgba(120,130,150,.35)'; for (const [x, bw, bh] of [[.04, .16, .1], [.24, .1, .06], [.62, .14, .09], [.82, .14, .12]]) { c.fillRect(x * w, wallTop - bh * h, bw * w, bh * h + 10); c.fillRect(x * w + bw * w * .3, wallTop - bh * h - 9, bw * w * .25, 9); }
+  g = c.createLinearGradient(0, wallTop, 0, wallBot); g.addColorStop(0, '#c9694f'); g.addColorStop(1, '#a8503b'); c.fillStyle = g; c.fillRect(0, wallTop, w, wallBot - wallTop);
+  const bh = Math.max(13, h * .04), bw = bh * 2.5; c.strokeStyle = 'rgba(245,225,205,.38)'; c.lineWidth = 1.5;
+  for (let y = wallTop, r = 0; y < wallBot; y += bh, r++) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); for (let x = (r % 2) * bw / 2; x < w; x += bw) { c.moveTo(x, y); c.lineTo(x, y + bh); } c.stroke(); }
+  for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(60,25,15,${.04 + Math.random() * .07})`; c.fillRect(Math.random() * w, wallTop + Math.random() * (wallBot - wallTop), bw * (.4 + Math.random() * .6), bh - 2); }
+  c.fillStyle = '#8a4534'; c.fillRect(0, wallTop - 5, w, 7);
+  // chalk stumps and scribbles
+  const cx = w / 2, sH = (wallBot - wallTop) * .58, sTop = wallBot - sH, gap = Math.min(22, w * .045);
+  c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineCap = 'round'; c.lineWidth = Math.max(4, w * .011);
+  for (const dx of [-gap, 0, gap]) { c.beginPath(); c.moveTo(cx + dx, wallBot - 3); c.lineTo(cx + dx + (Math.random() - .5) * 3, sTop); c.stroke(); }
+  c.lineWidth = Math.max(3, w * .008); c.beginPath(); c.moveTo(cx - gap - 5, sTop - 3); c.lineTo(cx - 2, sTop - 5); c.moveTo(cx + 2, sTop - 5); c.lineTo(cx + gap + 5, sTop - 3); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.62)'; c.font = `${Math.max(15, h * .05)}px "Gochi Hand", cursive`; c.textAlign = 'center';
+  c.save(); c.translate(w * .15, wallTop + (wallBot - wallTop) * .4); c.rotate(-.08); c.fillText('IND 287/4', 0, 0); c.restore();
+  c.save(); c.translate(w * .85, wallTop + (wallBot - wallTop) * .3); c.rotate(.07); c.fillText('NO BALL!', 0, 0); c.restore();
+  // dusty ground + pitch
+  g = c.createLinearGradient(0, wallBot, 0, h); g.addColorStop(0, '#d8b98b'); g.addColorStop(1, '#c39f6e'); c.fillStyle = g; c.fillRect(0, wallBot, w, h - wallBot);
+  c.fillStyle = 'rgba(90,60,30,.22)'; c.fillRect(0, wallBot, w, 6);
+  c.fillStyle = 'rgba(236,214,172,.6)'; c.beginPath(); c.moveTo(cx - gap * 2.4, wallBot + 3); c.lineTo(cx + gap * 2.4, wallBot + 3); c.lineTo(cx + gap * 7, h); c.lineTo(cx - gap * 7, h); c.closePath(); c.fill();
+  for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(110,80,45,${.08 + Math.random() * .12})`; c.beginPath(); c.arc(Math.random() * w, wallBot + 8 + Math.random() * (h - wallBot), .8 + Math.random() * 1.6, 0, TAU); c.fill(); }
+}
+
+function resize() {
+  const r = $('arena').getBoundingClientRect(); view.dpr = Math.min(window.devicePixelRatio || 1, 2); view.w = r.width; view.h = r.height;
+  cv.width = Math.round(r.width * view.dpr); cv.height = Math.round(r.height * view.dpr);
+  const fx = $('fx'); fx.width = Math.round(innerWidth * view.dpr); fx.height = Math.round(innerHeight * view.dpr);
+  buildBackdrop();
+}
+
+function render() {
+  const c = ctx, { w, h, dpr } = view;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(bg, 0, 0); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sc = Math.min(w / 2 / 150, h / 300, 1.5), baseY = h * .8;
+  let lift = 0, ext = 0, popS = 1;
+  if (anim.state === 'shake') { const k = anim.t / SHAKE_TIME; lift = -Math.abs(Math.sin(k * Math.PI * 3)) * 34; }
+  else if (anim.state === 'reveal') { ext = easeOut(anim.t / .16); popS = 1 + .12 * Math.sin(clamp(anim.t / .3, 0, 1) * Math.PI); }
+  else lift = Math.sin(anim.time * 2.2) * 3;
+  for (const who of [0, 1]) {
+    const x = w / 2 + (who ? 1 : -1) * Math.min(w * .25, 150 * sc), n = anim.state === 'reveal' ? anim.shown[who] : 0, bob = anim.state === 'idle' ? Math.sin(anim.time * 2.2 + who * 1.7) * 3 : lift;
+    c.fillStyle = 'rgba(70,45,20,.2)'; c.beginPath(); c.ellipse(x, h - 4, 70 * sc, 9 * sc, 0, 0, TAU); c.fill();
+    c.save(); c.translate(x, baseY + bob * sc); c.scale(sc * popS * (who ? -1 : 1), sc * popS); c.rotate(who ? .06 : .06);
+    drawHand(c, who, n, ext, (h - baseY) / sc + 60); c.restore();
+    if (anim.state === 'reveal' && n) { // number badge above each hand
+      const by = baseY - 205 * sc, r = 24 * sc * clamp(anim.t / .18, 0, 1) * (1 + .1 * Math.sin(anim.t * 12) * Math.max(0, 1 - anim.t * 2));
+      c.fillStyle = COL[who]; c.beginPath(); c.arc(x, by, r, 0, TAU); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 3; c.stroke();
+      c.fillStyle = '#fff'; c.font = `800 ${Math.round(r * 1.25)}px "Baloo 2", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(n, x, by + r * .08);
+    }
+    c.fillStyle = 'rgba(255,255,255,.92)'; c.font = `800 ${Math.max(11, 13 * sc)}px "Baloo 2", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const lbl = G.names[who].toUpperCase(), tw = c.measureText(lbl).width + 16; c.fillStyle = COL[who]; rr(c, x - tw / 2, h - 26, tw, 20, 10); c.fill(); c.fillStyle = '#fff'; c.fillText(lbl, x, h - 11.500);
+  }
+}
+
+let lastTs = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(.05, (ts - lastTs) / 1000 || 0); lastTs = ts; anim.time += dt;
+  if (anim.state === 'shake') {
+    anim.t += dt; const beat = Math.floor(anim.t / (SHAKE_TIME / 3));
+    if (beat > anim.ticks && beat < 3) { anim.ticks = beat; Sound.tick(beat); }
+    if (anim.t >= SHAKE_TIME) { anim.state = 'reveal'; anim.t = 0; anim.shown = anim.n.slice(); if (anim.onReveal) anim.onReveal(); }
+  } else if (anim.state === 'reveal') { anim.t += dt; if (anim.t >= anim.hold) { anim.state = 'idle'; anim.t = 0; const d = anim.done; anim.done = null; if (d) d(); } }
+  render();
+}
+function throwHands(n0, n1, onReveal, done) { anim.state = 'shake'; anim.t = 0; anim.ticks = 0; anim.n = [n0, n1]; anim.hold = REVEAL_TIME; anim.onReveal = onReveal; anim.done = done; Sound.tick(0); }
+
+/* =====================================================================
+   5. GAME LOGIC
+   ===================================================================== */
+const G = { mode: 'cpu', wickets: 1, names: ['You', 'Computer'], phase: 'menu', bat: 0, innings: 1, score: [0, 0], wk: [0, 0], balls: [0, 0], target: 0, hist: [], picks: [0, 0], step: 0, call: 'odd', busy: false, seenBat: [], seenBowl: [] };
+
+function pop(text, cls) { const el = $('pop'); el.textContent = text; el.className = cls || ''; void el.offsetWidth; el.classList.add('go'); }
+function say(html) { $('prompt').innerHTML = html; }
+function setPad(kind, items) {
+  const pad = $('pad'); pad.innerHTML = '';
+  if (kind === 'nums') { pad.className = ''; for (let n = 1; n <= 6; n++) { const b = document.createElement('button'); b.className = 'key'; b.innerHTML = n + (n === 6 ? '<small>thumb</small>' : ''); b.setAttribute('aria-label', 'Show ' + n); b.addEventListener('click', () => { b.blur(); onNumber(n); }); pad.appendChild(b); } return; }
+  pad.className = items.length === 1 ? 'one choices' : 'choices';
+  for (const it of items) { const b = document.createElement('button'); b.className = 'key c ' + (it.cls || ''); b.textContent = it.label; if (it.sub) { const s = document.createElement('small'); s.textContent = it.sub; b.appendChild(s); } b.addEventListener('click', () => { Sound.init(); Sound.tap(); it.run(); }); pad.appendChild(b); }
+}
+function lockPad(on) { G.busy = on; document.querySelectorAll('#pad .key').forEach(b => b.disabled = on); }
+
+function updateBoard() {
+  for (const i of [0, 1]) {
+    $('nm' + i).textContent = G.names[i]; $('rn' + i).innerHTML = `${G.score[i]}/${G.wk[i]}<small>${overs(G.balls[i])}</small>`;
+    $('team' + i).classList.toggle('bat', G.phase === 'play' && G.bat === i);
+  }
+  const need = G.target - G.score[G.bat];
+  $('target').textContent = G.phase === 'play' && G.innings === 2 ? `Target ${G.target} · need ${Math.max(0, need)}` : G.phase === 'play' ? '1st innings' : '';
+  $('chips').innerHTML = G.hist.slice(-9).map(v => `<b class="${v === 'W' ? 'w' : v >= 4 ? 'b' : ''}">${v}</b>`).join('');
+}
+
+function newMatch(mode) {
+  Sound.init(); G.mode = mode; G.names = mode === 'cpu' ? ['You', 'Computer'] : ['Player 1', 'Player 2'];
+  Object.assign(G, { score: [0, 0], wk: [0, 0], balls: [0, 0], innings: 1, target: 0, hist: [], seenBat: [], seenBowl: [], phase: 'tossCall', step: 0 });
+  $('menu').classList.remove('on'); $('result').classList.remove('on'); stopConfetti(); updateBoard();
+  say(`<b>Toss!</b> ${mode === 'cpu' ? 'Call it' : 'Player 1, call it'}: odd or even?`);
+  setPad('choices', [{ label: 'Odd', run: () => callToss('odd') }, { label: 'Even', cls: 'alt', run: () => callToss('even') }]);
+}
+function callToss(c) { G.call = c; G.phase = 'tossPick'; G.step = 0; setPad('nums'); askPick(); }
+
+// Who picks now? In 2-player mode each picks in secret, one after the other.
+function askPick() {
+  if (G.mode === 'cpu') { say(G.phase === 'tossPick' ? `You called <b>${G.call}</b>. Show a number!` : G.bat === 0 ? 'You are <b>batting</b>. Show a number!' : 'You are <b>bowling</b>. Match their number to get them out!'); return; }
+  const first = G.phase === 'tossPick' ? 0 : G.bat, who = G.step === 0 ? first : 1 - first, role = G.phase === 'tossPick' ? '' : who === G.bat ? ' (batting)' : ' (bowling)';
+  say(`<b>${G.names[who]}</b>${role}: pick in secret. ${G.names[1 - who]}, look away!`);
+}
+function cpuPick() { // the computer plays the percentages a little, like a sharp classmate
+  if (G.phase === 'tossPick') return rnd6();
+  const fav = arr => { if (arr.length < 4) return 0; const c = [0, 0, 0, 0, 0, 0, 0]; arr.slice(-10).forEach(v => c[v]++); return c.indexOf(Math.max(...c)); };
+  if (G.bat === 0) { const f = fav(G.seenBat); return f && Math.random() < .34 ? f : rnd6(); }              // bowling: guess your favourite
+  const f = fav(G.seenBowl), w = [0, 1, 1, 1.1, 1.3, 1.2, 1.4]; if (f) w[f] *= .4;                              // batting: dodge your favourite
+  let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let n = 1; n <= 6; n++) { r -= w[n]; if (r <= 0) return n; } return 6;
+}
+function onNumber(n) {
+  if (G.busy || (G.phase !== 'tossPick' && G.phase !== 'play')) return;
+  Sound.init(); Sound.tap();
+  if (G.mode === 'cpu') { G.picks = [n, cpuPick()]; if (G.phase === 'play') (G.bat === 0 ? G.seenBat : G.seenBowl).push(n); }
+  else { const first = G.phase === 'tossPick' ? 0 : G.bat, who = G.step === 0 ? first : 1 - first; G.picks[who] = n; if (G.step === 0) { G.step = 1; askPick(); return; } G.step = 0; }
+  lockPad(true); say('One… two… three!');
+  throwHands(G.picks[0], G.picks[1], G.phase === 'tossPick' ? revealToss : revealBall, G.phase === 'tossPick' ? afterToss : afterBall);
+}
+
+// ----- Toss -----
+function revealToss() { const sum = G.picks[0] + G.picks[1], odd = sum % 2 === 1; G.tossWinner = (odd === (G.call === 'odd')) ? 0 : 1; Sound.toss(); pop(`${sum} · ${odd ? 'ODD' : 'EVEN'}`, 'big'); }
+function afterToss() {
+  const w = G.tossWinner; G.phase = 'tossChoice';
+  if (G.mode === 'cpu' && w === 1) { const bats = Math.random() < .5; say(`Computer wins the toss and chooses to <b>${bats ? 'bat' : 'bowl'}</b>.`); setPad('choices', [{ label: 'Start', cls: 'go', run: () => startInnings(bats ? 1 : 0) }]); return; }
+  say(`<b>${G.mode === 'cpu' ? 'You win' : G.names[w] + ' wins'} the toss!</b> Bat or bowl first?`);
+  setPad('choices', [{ label: 'Bat', run: () => startInnings(w) }, { label: 'Bowl', cls: 'alt', run: () => startInnings(1 - w) }]);
+}
+
+// ----- Innings -----
+function startInnings(batIdx) { G.phase = 'play'; G.bat = batIdx; G.hist = []; G.step = 0; setPad('nums'); lockPad(false); updateBoard(); askPick(); }
+function revealBall() {
+  const b = G.bat, bat = G.picks[b], bowl = G.picks[1 - b]; G.balls[b]++;
+  if (bat === bowl) { G.wk[b]++; G.hist.push('W'); anim.hold = OUT_TIME; pop('OUT!', 'out'); Sound.out(); buzz([60, 50, 90]); }
+  else { const before = G.score[b]; G.score[b] += bat; G.hist.push(bat); Sound.bat(bat);
+    const mile = [100, 50].find(m => before < m && G.score[b] >= m);
+    pop(mile ? mile + ' UP!' : bat === 6 ? 'SIX!' : bat === 4 ? 'FOUR!' : '+' + bat, bat >= 4 || mile ? 'big' : ''); if (bat >= 4) buzz(20); }
+  updateBoard();
+}
+function afterBall() {
+  const b = G.bat;
+  if (G.innings === 2 && G.score[b] >= G.target) return endMatch();
+  if (G.wk[b] >= G.wickets) { if (G.innings === 1) return inningsBreak(); return endMatch(); }
+  lockPad(false); askPick();
+}
+function inningsBreak() {
+  const b = G.bat; G.target = G.score[b] + 1; G.phase = 'break'; updateBoard();
+  say(`${G.mode === 'cpu' && b === 0 ? 'You are' : G.names[b] + ' is'} all out for <b>${G.score[b]}</b>. ${G.mode === 'cpu' && b === 1 ? 'You need' : G.names[1 - b] + ' needs'} <b>${G.target}</b> to win.`);
+  setPad('choices', [{ label: 'Start the chase', cls: 'go', run: () => { G.innings = 2; startInnings(1 - b); } }]);
+}
+function endMatch() {
+  G.phase = 'over'; updateBoard(); setPad('choices', []); say('');
+  const chaser = G.bat, setter = 1 - chaser, cs = G.score[chaser], ss = G.score[setter];
+  const winner = cs >= G.target ? chaser : cs === ss ? -1 : setter;
+  let title, msg;
+  if (winner < 0) { title = 'It’s a tie!'; msg = 'Scores level. Nobody goes home happy.'; }
+  else {
+    const left = G.wickets - G.wk[chaser], how = winner === chaser ? `with ${left} wicket${left === 1 ? '' : 's'} in hand` : `by ${ss - cs} run${ss - cs === 1 ? '' : 's'}`;
+    title = G.mode === 'cpu' ? (winner === 0 ? 'You win!' : 'Computer wins') : G.names[winner] + ' wins!'; msg = `Won ${how}.`;
+  }
+  const happy = winner >= 0 && !(G.mode === 'cpu' && winner === 1);
+  if (G.mode === 'cpu') { store.played++; if (winner === 0) store.won++; if (G.score[0] > store.high) store.high = G.score[0]; saveStore(); }
+  $('resIcon').textContent = winner < 0 ? '🤝' : happy ? '🏆' : '🏏'; $('resTitle').textContent = title; $('resMsg').textContent = msg;
+  for (const i of [0, 1]) { $('resN' + i).textContent = G.names[i]; $('resS' + i).textContent = `${G.score[i]}/${G.wk[i]} (${overs(G.balls[i])} ov)`; }
+  $('resStat').textContent = statText();
+  setTimeout(() => { $('result').classList.add('on'); if (happy) { Sound.win(); startConfetti(); } else if (winner >= 0) Sound.lose(); }, 350);
+}
+const statText = () => store.played ? `vs Computer: won ${store.won} of ${store.played} · your best score ${store.high}` : '';
+
+/* =====================================================================
+   6. CONFETTI + WIRING
+   ===================================================================== */
+let confRaf = 0;
+function startConfetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const fx = $('fx'), c = fx.getContext('2d'), d = view.dpr, W = innerWidth, H = innerHeight, cols = ['#2f7fd0', '#d9534a', '#f2c230', '#6cc24a', '#fff'];
+  const bits = Array.from({ length: 130 }, () => ({ x: Math.random() * W, y: -Math.random() * H, w: 6 + Math.random() * 7, h: 4 + Math.random() * 5, vy: 130 + Math.random() * 200, vx: -40 + Math.random() * 80, r: Math.random() * TAU, vr: -6 + Math.random() * 12, ph: Math.random() * TAU, col: pick(cols) }));
+  let last = performance.now(); cancelAnimationFrame(confRaf);
+  (function loop(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, W, H);
+    for (const b of bits) { b.ph += dt * 3; b.x += (b.vx + Math.sin(b.ph) * 50) * dt; b.y += b.vy * dt; b.r += b.vr * dt; if (b.y > H + 20) { b.y = -20; b.x = Math.random() * W; } c.save(); c.translate(b.x, b.y); c.rotate(b.r); c.scale(1, Math.cos(b.ph * 1.6)); c.fillStyle = b.col; c.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); c.restore(); }
+    confRaf = requestAnimationFrame(loop); })(last);
+}
+function stopConfetti() { cancelAnimationFrame(confRaf); const fx = $('fx'); fx.getContext('2d').clearRect(0, 0, fx.width, fx.height); }
+
+function openMenu() { stopConfetti(); $('result').classList.remove('on'); $('statLine').textContent = statText(); $('menu').classList.add('on'); G.phase = 'menu'; }
+$('cpuBtn').addEventListener('click', () => newMatch('cpu'));
+$('twoBtn').addEventListener('click', () => newMatch('2p'));
+$('againBtn').addEventListener('click', () => newMatch(G.mode));
+$('menuBtn').addEventListener('click', openMenu);
+document.querySelectorAll('#wkSeg button').forEach(b => b.addEventListener('click', () => { G.wickets = +b.dataset.w; document.querySelectorAll('#wkSeg button').forEach(x => x.setAttribute('aria-pressed', x === b)); Sound.init(); Sound.tap(); }));
+function refreshMute() { $('muteBtn').textContent = store.muted ? '🔇' : '🔊'; $('muteBtn').setAttribute('aria-label', store.muted ? 'Unmute sound' : 'Mute sound'); }
+$('muteBtn').addEventListener('click', () => { store.muted = !store.muted; saveStore(); refreshMute(); Sound.init(); });
+window.addEventListener('keydown', e => { if (e.key >= '1' && e.key <= '6' && !$('menu').classList.contains('on') && !$('result').classList.contains('on')) onNumber(+e.key); });
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe($('arena'));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(buildBackdrop);
+
+refreshMute(); $('statLine').textContent = statText(); setPad('nums'); lockPad(true); say('Pick a mode to start.'); updateBoard(); resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
