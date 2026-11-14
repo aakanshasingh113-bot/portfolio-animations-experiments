@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="A tiny game about trusting your eye: nudge the square to the exact centre.">
+  <title>Just One More Pixel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="intro">
+      <h1>Just One More Pixel</h1>
+      <p class="subtitle">Trust your eye. Find the centre.</p>
+    </header>
+
+    <div class="views">
+      <section class="view" id="game" aria-label="Game">
+        <p class="round" id="round">Round 1 of 3</p>
+
+        <!-- The frame carries the visible border; the surface is the coordinate system. -->
+        <div class="frame">
+          <div class="surface" id="surface" tabindex="0" role="application"
+               aria-label="Play area. Arrow keys move the square 1 pixel, Shift plus arrow 10 pixels, Enter submits.">
+            <div class="square" id="square" draggable="false"></div>
+            <svg class="overlay" id="overlay" aria-hidden="true" focusable="false">
+              <line id="link" class="link"/>
+              <circle id="dot" r="2"/>
+              <line id="crossH"/>
+              <line id="crossV"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="status">
+          <p class="hint" id="hint">Drag the square or use the arrows.</p>
+          <div class="result" id="result" hidden>
+            <p><strong id="resultDistance"></strong> <span id="resultMessage"></span></p>
+            <p class="detail" id="resultDetail"></p>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="dpad" role="group" aria-label="Move the square">
+            <button type="button" class="nudge" data-dx="0" data-dy="-1" style="grid-area:up" aria-label="Move up 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10l4-4 4 4"/></svg>
+            </button>
+            <button type="button" class="nudge" data-dx="-1" data-dy="0" style="grid-area:left" aria-label="Move left 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>
+            </button>
+            <button type="button" class="nudge" data-dx="0" data-dy="1" style="grid-area:down" aria-label="Move down 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+            </button>
+            <button type="button" class="nudge" data-dx="1" data-dy="0" style="grid-area:right" aria-label="Move right 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+          </div>
+          <button type="button" class="primary" id="primary">Looks centred</button>
+        </div>
+      </section>
+
+      <section class="view summary is-off" id="summary" aria-labelledby="summaryTitle">
+        <h2 id="summaryTitle" tabindex="-1">You have an eye for this.</h2>
+        <dl class="stats">
+          <div><dt>Mean error</dt><dd id="meanError"></dd></div>
+          <div><dt>Best round</dt><dd id="bestError"></dd></div>
+        </dl>
+        <ol class="rounds" id="roundList" aria-label="Error per round"></ol>
+        <button type="button" class="primary" id="restart">Try again</button>
+      </section>
+    </div>
+
+    <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
