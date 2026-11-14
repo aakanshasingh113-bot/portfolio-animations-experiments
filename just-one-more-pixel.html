@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="A tiny game about trusting your eye: nudge the square to the exact centre.">
+  <title>Just One More Pixel</title>
+  <style>
+:root {
+  /* Layout idea: one chunky "sticker" play area, keycap controls, everything else quiet. */
+  --bg: #EFECFD;      /* pale lilac page */
+  --panel: #FFFFFF;   /* play surface and keys */
+  --ink: #1D1A39;     /* deep indigo text and outlines */
+  --muted: #5C5880;   /* secondary text */
+  --violet: #5B4BFF;  /* the square and primary action */
+  --yellow: #FFD23F;  /* highlights */
+  --pink: #FF3D7F;    /* true-centre marker */
+  --radius: 12px;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { height: 100%; }
+html, body { margin: 0; }
+
+body {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, p, dl, dd, ol { margin: 0; padding: 0; }
+ol { list-style: none; }
+
+.app {
+  width: 100%;
+  max-width: 604px;
+  padding: 18px 20px 22px;
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+h1 {
+  font-size: clamp(1.625rem, 6vw, 2.25rem);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+/* The title's own pixel sits one pixel off. */
+h1 i {
+  display: inline-block;
+  width: 0.34em;
+  height: 0.34em;
+  margin-left: 0.12em;
+  background: var(--violet);
+  border-radius: 2px;
+  translate: 0 -1px;
+}
+
+.subtitle { margin-top: 4px; color: var(--muted); }
+
+/* Both views share one grid cell so swapping them never moves the page. */
+.views { display: grid; }
+.view { grid-area: 1 / 1; display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.view.is-off { visibility: hidden; }
+
+.progress { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+.round { font-variant-numeric: tabular-nums; }
+.pips { display: flex; gap: 5px; }
+.pips li {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  background: var(--panel);
+  transition: background-color 160ms ease;
+}
+.pips li.is-current { background: var(--yellow); }
+.pips li.is-done { background: var(--violet); }
+
+.frame {
+  width: 100%;
+  max-width: 564px; /* 560px surface + 2px border each side */
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 5px 5px 0 var(--ink);
+  overflow: hidden;
+}
+.frame:focus-within { outline: 3px solid var(--violet); outline-offset: 2px; }
+
+/* Coordinate system: no padding, no border. */
+.surface {
+  position: relative;
+  height: clamp(200px, calc(100vh - 400px), 300px);
+  height: clamp(200px, calc(100dvh - 400px), 300px);
+  outline: none;
+  touch-action: none;
+}
+
+.square {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
+  background: var(--violet);
+  border-radius: 4px;
+  cursor: grab;
+  display: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+.square.is-ready { display: block; }
+.square.is-dragging { cursor: grabbing; }
+.square.pop { animation: pop 240ms cubic-bezier(.3, 1.6, .5, 1); }
+.is-locked .square { cursor: default; }
+@keyframes pop { from { scale: 0.4; } to { scale: 1; } }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  fill: none;
+  stroke-linecap: round;
+}
+.overlay .under { stroke: var(--panel); stroke-width: 5; }
+.overlay .over { stroke: var(--ink); stroke-width: 1.5; }
+.overlay .link.over { stroke-dasharray: 4 4; }
+.overlay .mark.over { stroke: var(--pink); stroke-width: 2; }
+.overlay #dot { fill: var(--yellow); stroke: var(--ink); stroke-width: 1.5; }
+.overlay .ripple { stroke: var(--pink); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.is-revealed .overlay { opacity: 1; transition: opacity 160ms ease; }
+.is-revealed .ripple { animation: ripple 700ms ease-out; }
+@keyframes ripple { from { opacity: 0.9; transform: scale(0.3); } to { opacity: 0; transform: scale(5); } }
+
+.status { min-height: 80px; display: grid; place-items: center; }
+.hint { color: var(--muted); }
+.result { display: flex; align-items: center; gap: 14px; text-align: left; animation: rise 220ms ease-out; }
+@keyframes rise { from { opacity: 0; translate: 0 6px; } }
+
+.loupe { flex: none; width: 76px; height: 76px; }
+.loupe .lens { fill: var(--panel); stroke: var(--ink); stroke-width: 2; }
+.loupe .axis { stroke: var(--pink); stroke-width: 1.5; }
+.loupe .miss { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.loupe .shot { fill: var(--violet); stroke: var(--ink); stroke-width: 1.5; }
+.loupe text { font-size: 9px; font-weight: 700; fill: var(--muted); }
+
+.score { display: flex; align-items: center; gap: 10px; }
+.score strong { font-size: 1.375rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.meter { display: flex; gap: 3px; }
+.meter i { width: 9px; height: 9px; border: 1.5px solid var(--ink); border-radius: 2px; }
+.meter i.on { background: var(--yellow); }
+.verdict { font-weight: 600; }
+.detail { color: var(--muted); font-size: 14px; }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 28px;
+  padding-bottom: 4px; /* room for keycap shadows */
+}
+
+.dpad {
+  display: grid;
+  grid-template: "nw up ne" 44px "left down right" 44px / 44px 44px 44px;
+  gap: 5px;
+}
+
+/* Keycaps: a solid lip that the key presses into. */
+button {
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 4px 0 var(--ink);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: translate 70ms ease, box-shadow 70ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+button:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
+button:active:not(:disabled) { translate: 0 4px; box-shadow: 0 0 0 var(--ink); }
+
+.nudge { display: grid; place-items: center; padding: 0; background: var(--panel); }
+.nudge:hover:not(:disabled) { background: var(--yellow); }
+.nudge:disabled { opacity: 0.35; cursor: default; box-shadow: 0 2px 0 var(--ink); translate: 0 2px; }
+.nudge svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.primary {
+  min-width: 176px;
+  height: 48px;
+  padding: 0 22px;
+  background: var(--violet);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+}
+.primary:hover { background: #4A3AF0; }
+
+.summary { align-content: start; gap: 18px; padding-top: 28px; }
+.summary h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.025em; outline: none; text-wrap: balance; }
+.recap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 28px; }
+.map-wrap { display: grid; gap: 4px; justify-items: center; }
+.map { width: 140px; height: 140px; }
+.map .ring { fill: var(--panel); stroke: var(--ink); stroke-width: 2; }
+.map .ring.inner { fill: none; stroke-width: 1; stroke-dasharray: 3 4; }
+.map .axis { stroke: var(--pink); stroke-width: 1.5; }
+.map .shot circle { fill: var(--violet); stroke: var(--ink); stroke-width: 1.5; }
+.map .shot text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+.map-wrap p, .best-note { font-size: 13px; color: var(--muted); }
+.figures { display: grid; gap: 12px; justify-items: start; text-align: left; }
+.stats { display: flex; gap: 28px; }
+.stats dt, .rounds span { font-size: 13px; color: var(--muted); }
+.stats dd { font-size: 2rem; line-height: 1.15; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stats dd small { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin-left: 4px; }
+.rounds { display: flex; gap: 6px; }
+.rounds li {
+  display: grid;
+  padding: 5px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--panel);
+  font-variant-numeric: tabular-nums;
+}
+.best-note strong { color: var(--ink); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 400px) {
+  .app { padding: 14px 16px 18px; }
+  .status { min-height: 92px; } /* the verdict can wrap to two lines */
+  .controls { flex-wrap: nowrap; gap: 14px; }
+  .controls .primary { min-width: 124px; padding: 0 12px; }
+  .figures { justify-items: center; text-align: center; }
+}
+
+/* Short, wide screens (phones held sideways): play area left, controls right. */
+@media (max-height: 540px) and (min-width: 600px) {
+  .app { max-width: 880px; padding: 10px 20px 14px; gap: 8px; }
+  h1 { font-size: 1.375rem; }
+  .subtitle { display: none; }
+  #game {
+    grid-template: "progress progress" auto "frame status" 1fr "frame controls" auto / minmax(0, 1fr) 236px;
+    gap: 8px 22px;
+    align-items: center;
+  }
+  .progress { grid-area: progress; }
+  .frame { grid-area: frame; justify-self: end; }
+  .status { grid-area: status; min-height: 72px; align-self: end; }
+  .controls { grid-area: controls; flex-direction: column; gap: 12px; align-self: start; }
+  .surface {
+    height: clamp(150px, calc(100vh - 124px), 300px);
+    height: clamp(150px, calc(100dvh - 124px), 300px);
+  }
+  .loupe { display: none; } /* no room beside the text here */
+  .result { text-align: center; }
+  .score { justify-content: center; }
+  .summary { padding-top: 0; gap: 10px; }
+  .map { width: 116px; height: 116px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+  <main class="app">
+    <header class="intro">
+      <h1>Just One More Pixel<i aria-hidden="true"></i></h1>
+      <p class="subtitle">Trust your eye. Find the centre.</p>
+    </header>
+
+    <div class="views">
+      <section class="view" id="game" aria-label="Game">
+        <div class="progress">
+          <p class="round" id="round">Round 1 of 3</p>
+          <ol class="pips" id="pips" aria-hidden="true"><li></li><li></li><li></li></ol>
+        </div>
+
+        <!-- The frame carries the visible border; the surface is the coordinate system. -->
+        <div class="frame">
+          <div class="surface" id="surface" tabindex="0" role="application"
+               aria-label="Play area. Arrow keys move the square 1 pixel, Shift plus arrow 10 pixels, Enter submits.">
+            <div class="square" id="square" draggable="false"></div>
+            <svg class="overlay" id="overlay" aria-hidden="true" focusable="false">
+              <line id="linkUnder" class="link under"/>
+              <line id="link" class="link over"/>
+              <g id="mark">
+                <circle class="ripple" r="8"/>
+                <path class="mark under" d="M-10 0H10M0 -10V10"/>
+                <path class="mark over" d="M-10 0H10M0 -10V10"/>
+              </g>
+              <circle id="dot" r="3"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="status">
+          <p class="hint" id="hint">Drag the square or use the arrows.</p>
+          <div class="result" id="result" hidden>
+            <svg class="loupe" viewBox="-38 -38 76 76" aria-hidden="true" focusable="false">
+              <circle class="lens" r="32"/>
+              <path class="axis" d="M-32 0H32M0 -32V32"/>
+              <line class="miss" id="loupeLine" x1="0" y1="0"/>
+              <rect class="shot" id="loupeShot" width="10" height="10" rx="2"/>
+              <text id="loupeZoom" x="37" y="36" text-anchor="end"></text>
+            </svg>
+            <div>
+              <p class="score"><strong id="resultDistance"></strong><span class="meter" id="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span></p>
+              <p class="verdict" id="resultMessage"></p>
+              <p class="detail" id="resultDetail"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="dpad" role="group" aria-label="Move the square">
+            <button type="button" class="nudge" data-dx="0" data-dy="-1" style="grid-area:up" aria-label="Move up 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10l4-4 4 4"/></svg>
+            </button>
+            <button type="button" class="nudge" data-dx="-1" data-dy="0" style="grid-area:left" aria-label="Move left 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>
+            </button>
+            <button type="button" class="nudge" data-dx="0" data-dy="1" style="grid-area:down" aria-label="Move down 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+            </button>
+            <button type="button" class="nudge" data-dx="1" data-dy="0" style="grid-area:right" aria-label="Move right 1 pixel">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+          </div>
+          <button type="button" class="primary" id="primary">Looks centred</button>
+        </div>
+      </section>
+
+      <section class="view summary is-off" id="summary" aria-labelledby="summaryTitle">
+        <h2 id="summaryTitle" tabindex="-1">You have an eye for this.</h2>
+        <div class="recap">
+          <div class="map-wrap">
+            <svg class="map" viewBox="-70 -70 140 140" role="img" aria-label="Where each round landed relative to the centre">
+              <circle class="ring" r="60"/>
+              <circle class="ring inner" r="30"/>
+              <path class="axis" d="M-60 0H60M0 -60V60"/>
+              <g id="shots"></g>
+            </svg>
+            <p id="mapScale"></p>
+          </div>
+          <div class="figures">
+            <dl class="stats">
+              <div><dt>Mean error</dt><dd id="meanError"></dd></div>
+              <div><dt>Best round</dt><dd id="bestError"></dd></div>
+            </dl>
+            <ol class="rounds" id="roundList" aria-label="Error per round"></ol>
+            <p class="best-note" id="bestNote"></p>
+          </div>
+        </div>
+        <button type="button" class="primary" id="restart">Try again</button>
+      </section>
+    </div>
+
+    <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+(() => {
+  'use strict';
+
+  const HALF = 18;            // half of the 36px square
+  const ROUNDS = 3;
+  const ADVANCE_GUARD_MS = 300; // ignore double-clicks that would skip the reveal
+
+  const $ = (id) => document.getElementById(id);
+  const game = $('game'), summary = $('summary');
+  const surface = $('surface'), square = $('square');
+  const primary = $('primary'), restart = $('restart');
+  const nudges = [...document.querySelectorAll('.nudge')];
+
+  // All geometry is in CSS pixels of the surface. The square's position is
+  // stored as the offset of its centre from the surface centre (ox, oy), so
+  //   squareCentre = (w / 2 + ox, h / 2 + oy)   and   error = (ox, oy).
+  // The same numbers drive placement, clamping, scoring and the reveal.
+  const state = {
+    w: 0, h: 0,
+    ox: 0, oy: 0,
+    round: 0,          // 0-based
+    phase: 'idle',     // idle | play | revealed | done
+    results: [],       // { dx, dy, distance } per submitted round
+    submittedAt: 0,
+  };
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const BEST_KEY = 'just-one-more-pixel:best-mean';
+  let countToken = 0;  // cancels a running count-up
+  let drag = null;     // { id, gx, gy } while a pointer is dragging
+
+  // Whole-pixel bounds keep 1px steps on the integer lattice after hitting a wall.
+  const maxX = () => Math.max(0, Math.floor(state.w / 2 - HALF));
+  const maxY = () => Math.max(0, Math.floor(state.h / 2 - HALF));
+  const clamp = (v, m) => Math.min(m, Math.max(-m, v));
+
+  const fmt = (v) => v.toFixed(1);
+  const fmtDistance = (d) => (d < 0.05 ? '<0.1' : fmt(d)) + ' CSS px';
+
+  const tier = (d) => (d < 0.5 ? 4 : d < 3 ? 3 : d < 8 ? 2 : 1);
+  const verdict = (d) => ['', 'Your eyes have opinions.', 'Almost. Just one more pixel.',
+    'That’s a designer’s eye.', 'Pixel perfect.'][tier(d)];
+
+  // Tick the visible number up to its final value; the final text is always exact.
+  function countUp(el, d) {
+    const token = ++countToken, t0 = performance.now();
+    if (reducedMotion.matches || d < 0.05) { el.textContent = fmtDistance(d); return; }
+    const tick = (now) => {
+      if (token !== countToken) return;
+      const k = Math.min(1, (now - t0) / 450);
+      el.textContent = k < 1 ? fmt(d * (1 - (1 - k) ** 3)) + ' CSS px' : fmtDistance(d);
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    tick(t0);
+  }
+
+  // Magnified view of the miss: crosshair = true centre, block = the square's centre.
+  function drawLoupe(dx, dy, distance) {
+    const zoom = Math.min(8, 23 / Math.max(distance, 1e-9));
+    const x = dx * zoom, y = dy * zoom;
+    const set = (id, attrs) => { for (const k in attrs) $(id).setAttribute(k, attrs[k]); };
+    set('loupeLine', { x2: x, y2: y });
+    set('loupeShot', { x: x - 5, y: y - 5 });
+    $('loupeZoom').textContent = (zoom >= 1 ? Math.round(zoom) : zoom.toFixed(1)) + '×';
+  }
+
+  function describeAxis(v, negative, positive, centred) {
+    const a = Math.abs(v);
+    return a < 0.05 ? centred : `${fmt(a)} px ${v < 0 ? negative : positive}`;
+  }
+
+  // Random whole-pixel start, 40–90px from centre (range shrinks for tiny surfaces).
+  function randomStart() {
+    const mx = maxX(), my = maxY();
+    const hi = Math.min(90, Math.hypot(mx, my));
+    const lo = hi >= 50 ? 40 : hi * 0.6;
+    for (let i = 0; i < 300; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = lo + Math.random() * (hi - lo);
+      const x = Math.round(Math.cos(angle) * dist), y = Math.round(Math.sin(angle) * dist);
+      const d = Math.hypot(x, y);
+      if (Math.abs(x) <= mx && Math.abs(y) <= my && d >= lo && d <= hi && d > 0) return { x, y };
+    }
+    const sign = Math.random() < 0.5 ? -1 : 1;
+    return mx >= my ? { x: sign * Math.min(mx, 40), y: 0 } : { x: 0, y: sign * Math.min(my, 40) };
+  }
+
+  function render() {
+    const tx = state.w / 2, ty = state.h / 2;
+    // Clamp for display only; a submitted offset is never rewritten.
+    const cx = tx + clamp(state.ox, maxX()), cy = ty + clamp(state.oy, maxY());
+    square.style.transform = `translate(${cx - HALF}px, ${cy - HALF}px)`;
+    square.classList.toggle('is-ready', state.phase !== 'idle');
+    if (state.phase !== 'revealed') return;
+    const set = (id, attrs) => { for (const k in attrs) $(id).setAttribute(k, attrs[k]); };
+    set('link', { x1: cx, y1: cy, x2: tx, y2: ty });
+    set('linkUnder', { x1: cx, y1: cy, x2: tx, y2: ty });
+    set('dot', { cx, cy });
+    set('mark', { transform: `translate(${tx} ${ty})` });
+  }
+
+  function moveTo(ox, oy) {
+    if (state.phase !== 'play') return;
+    state.ox = clamp(ox, maxX());
+    state.oy = clamp(oy, maxY());
+    render();
+  }
+
+  function setLocked(locked) {
+    game.classList.toggle('is-locked', locked);
+    nudges.forEach((b) => { b.disabled = locked; });
+  }
+
+  function startRound() {
+    endDrag();
+    const start = randomStart();
+    state.ox = start.x;
+    state.oy = start.y;
+    state.phase = 'play';
+    game.classList.remove('is-revealed');
+    setLocked(false);
+    countToken++;
+    $('round').textContent = `Round ${state.round + 1} of ${ROUNDS}`;
+    [...$('pips').children].forEach((pip, i) => {
+      pip.className = i < state.round ? 'is-done' : i === state.round ? 'is-current' : '';
+    });
+    square.classList.remove('pop');
+    void square.offsetWidth; // restart the pop-in
+    square.classList.add('pop');
+    $('hint').hidden = false;
+    $('result').hidden = true;
+    $('live').textContent = '';
+    primary.textContent = 'Looks centred';
+    render();
+  }
+
+  function submit() {
+    if (state.phase !== 'play') return;
+    endDrag();
+    state.phase = 'revealed';
+    state.submittedAt = performance.now();
+    const dx = state.ox, dy = state.oy; // = squareCentre - target, unrounded
+    const distance = Math.hypot(dx, dy);
+    state.results.push({ dx, dy, distance });
+
+    const detail = describeAxis(dx, 'left', 'right', 'centred horizontally') + ' · ' +
+                   describeAxis(dy, 'above', 'below', 'centred vertically');
+    countUp($('resultDistance'), distance);
+    drawLoupe(dx, dy, distance);
+    [...$('meter').children].forEach((box, i) => box.classList.toggle('on', i < tier(distance)));
+    $('pips').children[state.round].className = 'is-done';
+    $('resultMessage').textContent = verdict(distance);
+    $('resultDetail').textContent = detail;
+    $('hint').hidden = true;
+    $('result').hidden = false;
+    $('live').textContent =
+      `Round ${state.round + 1}: ${fmtDistance(distance)} from centre. ${detail}. ${verdict(distance)}`;
+
+    setLocked(true);
+    game.classList.add('is-revealed');
+    primary.textContent = state.round + 1 < ROUNDS ? 'Next round' : 'See results';
+    render();
+    primary.focus({ preventScroll: true });
+  }
+
+  function advance() {
+    if (state.phase !== 'revealed' || performance.now() - state.submittedAt < ADVANCE_GUARD_MS) return;
+    if (state.round + 1 < ROUNDS) {
+      state.round++;
+      startRound();
+      surface.focus({ preventScroll: true });
+    } else {
+      showSummary();
+    }
+  }
+
+  function showSummary() {
+    state.phase = 'done';
+    const errors = state.results.map((r) => r.distance);
+    const mean = errors.reduce((a, b) => a + b, 0) / errors.length;
+    const stat = (id, d) => { $(id).innerHTML = `${d < 0.05 ? '&lt;0.1' : fmt(d)}<small>CSS px</small>`; };
+    stat('meanError', mean);
+    stat('bestError', Math.min(...errors));
+    $('roundList').innerHTML = errors
+      .map((d, i) => `<li><span>Round ${i + 1}</span><b>${d < 0.05 ? '&lt;0.1' : fmt(d)} px</b></li>`)
+      .join('');
+    // Shot map: all three placements on one scale that fits the widest miss.
+    const zoom = Math.min(12, 50 / Math.max(...errors, 1e-9));
+    $('shots').innerHTML = state.results.map((r, i) =>
+      `<g class="shot" transform="translate(${r.dx * zoom} ${r.dy * zoom})"><circle r="8"/><text>${i + 1}</text></g>`).join('');
+    $('mapScale').textContent = `Outer ring: ${fmt(60 / zoom)} px`;
+
+    // Personal best lives only in this browser; the game works without storage.
+    let best = NaN;
+    try { best = parseFloat(localStorage.getItem(BEST_KEY)); } catch (_) { /* storage unavailable */ }
+    const isBest = !(best <= mean);
+    if (isBest) { try { localStorage.setItem(BEST_KEY, String(mean)); } catch (_) { /* ignore */ } }
+    $('bestNote').innerHTML = isBest
+      ? (Number.isNaN(best) ? 'That’s your score to beat.' : '<strong>New personal best.</strong>')
+      : `Personal best: <strong>${fmtDistance(best)}</strong>`;
+
+    $('live').textContent = '';
+    game.classList.add('is-off');
+    summary.classList.remove('is-off');
+    $('summaryTitle').focus({ preventScroll: true });
+  }
+
+  function reset() {
+    state.round = 0;
+    state.results = [];
+    summary.classList.add('is-off');
+    game.classList.remove('is-off');
+    startRound();
+    surface.focus({ preventScroll: true });
+  }
+
+  // ---- Pointer dragging -------------------------------------------------
+  function pointerPos(e) {
+    const r = surface.getBoundingClientRect();
+    // Scale factor keeps CSS-pixel maths right if an embedder transforms the frame.
+    const sx = r.width ? state.w / r.width : 1, sy = r.height ? state.h / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    const id = drag.id;
+    drag = null;
+    square.classList.remove('is-dragging');
+    try { surface.releasePointerCapture(id); } catch (_) { /* already released */ }
+  }
+
+  // Drag listeners live on the surface and hit-test with the game's own
+  // coordinates, so a grab works the same whatever the square is animating.
+  surface.addEventListener('pointerdown', (e) => {
+    surface.focus({ preventScroll: true });
+    if (state.phase !== 'play' || drag || e.button !== 0) return;
+    const p = pointerPos(e);
+    // Remember where inside the square it was grabbed so it does not jump.
+    const gx = p.x - (state.w / 2 + state.ox), gy = p.y - (state.h / 2 + state.oy);
+    const reach = HALF + (e.pointerType === 'mouse' ? 0 : 6); // a little slack for fingers
+    if (Math.abs(gx) > reach || Math.abs(gy) > reach) return;
+    e.preventDefault();
+    drag = { id: e.pointerId, gx, gy };
+    square.classList.add('is-dragging');
+    try { surface.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+  });
+
+  surface.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const p = pointerPos(e);
+    moveTo(p.x - drag.gx - state.w / 2, p.y - drag.gy - state.h / 2);
+  });
+
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    surface.addEventListener(type, (e) => { if (drag && e.pointerId === drag.id) endDrag(); });
+  }
+  square.addEventListener('dragstart', (e) => e.preventDefault());
+
+  // ---- Keyboard (only while the play area itself is focused) --------------
+  const KEYS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+  surface.addEventListener('keydown', (e) => {
+    if (e.target !== surface || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'Enter') {
+      e.preventDefault(); // also stops the keypress from activating the newly focused button
+      if (!e.repeat) submit();
+      return;
+    }
+    const dir = KEYS[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    moveTo(state.ox + dir[0] * step, state.oy + dir[1] * step);
+  });
+
+  // ---- Buttons ------------------------------------------------------------
+  nudges.forEach((b) => b.addEventListener('click', () => {
+    moveTo(state.ox + Number(b.dataset.dx), state.oy + Number(b.dataset.dy));
+  }));
+
+  // A held Enter/Space must never chain submit → next round → restart.
+  const blockRepeat = (e) => { if (e.repeat && (e.key === 'Enter' || e.key === ' ')) e.preventDefault(); };
+  primary.addEventListener('keydown', blockRepeat);
+  restart.addEventListener('keydown', blockRepeat);
+
+  primary.addEventListener('click', () => (state.phase === 'play' ? submit() : advance()));
+  restart.addEventListener('click', reset);
+
+  // ---- Surface size ---------------------------------------------------------
+  new ResizeObserver((entries) => {
+    const { width, height } = entries[entries.length - 1].contentRect;
+    state.w = width;
+    state.h = height;
+    if (state.phase === 'idle') {
+      if (width > 0 && height > 0) startRound();
+    } else if (state.phase === 'play') {
+      moveTo(state.ox, state.oy); // re-clamp; submitted rounds are left untouched
+    } else {
+      render();
+    }
+  }).observe(surface);
+
+  // Read/write hook for automated checks (tests/verify.js). Not used by the game.
+  window.__pixel = { state, moveTo };
+})();
+</script>
+</body>
+</html>
