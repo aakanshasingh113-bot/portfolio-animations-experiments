@@ -14,9 +14,11 @@
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
-html, body { margin: 0; height: 100%; }
+html { height: 100%; }
+html, body { margin: 0; }
 
 body {
+  min-height: 100%;
   display: grid;
   place-items: center;
   background: var(--bg);
@@ -255,6 +257,31 @@ button:active:not(:disabled) { translate: 0 4px; box-shadow: 0 0 0 var(--ink); }
   .controls { flex-wrap: nowrap; gap: 14px; }
   .controls .primary { min-width: 124px; padding: 0 12px; }
   .figures { justify-items: center; text-align: center; }
+}
+
+/* Short, wide screens (phones held sideways): play area left, controls right. */
+@media (max-height: 540px) and (min-width: 600px) {
+  .app { max-width: 880px; padding: 10px 20px 14px; gap: 8px; }
+  h1 { font-size: 1.375rem; }
+  .subtitle { display: none; }
+  #game {
+    grid-template: "progress progress" auto "frame status" 1fr "frame controls" auto / minmax(0, 1fr) 236px;
+    gap: 8px 22px;
+    align-items: center;
+  }
+  .progress { grid-area: progress; }
+  .frame { grid-area: frame; justify-self: end; }
+  .status { grid-area: status; min-height: 72px; align-self: end; }
+  .controls { grid-area: controls; flex-direction: column; gap: 12px; align-self: start; }
+  .surface {
+    height: clamp(150px, calc(100vh - 124px), 300px);
+    height: clamp(150px, calc(100dvh - 124px), 300px);
+  }
+  .loupe { display: none; } /* no room beside the text here */
+  .result { text-align: center; }
+  .score { justify-content: center; }
+  .summary { padding-top: 0; gap: 10px; }
+  .map { width: 116px; height: 116px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -324,6 +324,34 @@ const wait = (page, ms = 350) => page.waitForTimeout(ms);
     await ctx.close();
   }
 
+  // Layout across more screens, before and after a reveal, and on the results view
+  for (const [w, h] of [[360, 640], [414, 896], [768, 1024], [844, 390], [667, 375], [932, 430]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+    const m = await ctx.newPage();
+    await m.goto(URL);
+    await m.waitForFunction(() => window.__pixel.state.phase === 'play');
+    const fit = () => m.evaluate(() => {
+      const d = document.documentElement, f = document.querySelector('.frame').getBoundingClientRect();
+      return d.scrollWidth <= innerWidth && d.scrollHeight <= innerHeight && f.right + 5 <= innerWidth && f.left >= 0;
+    });
+    const t = await st(m);
+    let ok = await fit() && t.w >= 280 && t.h >= 150;
+    const top = () => m.evaluate(() => document.getElementById('primary').getBoundingClientRect().top);
+    const before = await top();
+    for (let r = 0; r < 3; r++) {
+      await setOff(m, 3, 4);
+      await m.tap('#primary');
+      ok = ok && await fit() && (r > 0 || before === await top());
+      if (r === 0) await shot(m, `screen-${w}x${h}.png`);
+      await m.waitForTimeout(350);
+      await m.tap('#primary');
+    }
+    ok = ok && await fit() && (await st(m)).phase === 'done';
+    await shot(m, `screen-${w}x${h}-summary.png`);
+    check(`layout fits with no overflow or shift @${w}x${h}`, ok, `surface ${t.w}x${t.h}`);
+    await ctx.close();
+  }
+
   // Layout stability: reveal must not move anything
   const p2 = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   await p2.goto(URL);
