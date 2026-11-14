@@ -11,13 +11,16 @@
 <body>
   <main class="app">
     <header class="intro">
-      <h1>Just One More Pixel</h1>
+      <h1>Just One More Pixel<i aria-hidden="true"></i></h1>
       <p class="subtitle">Trust your eye. Find the centre.</p>
     </header>
 
     <div class="views">
       <section class="view" id="game" aria-label="Game">
-        <p class="round" id="round">Round 1 of 3</p>
+        <div class="progress">
+          <p class="round" id="round">Round 1 of 3</p>
+          <ol class="pips" id="pips" aria-hidden="true"><li></li><li></li><li></li></ol>
+        </div>
 
         <!-- The frame carries the visible border; the surface is the coordinate system. -->
         <div class="frame">
@@ -25,10 +28,14 @@
                aria-label="Play area. Arrow keys move the square 1 pixel, Shift plus arrow 10 pixels, Enter submits.">
             <div class="square" id="square" draggable="false"></div>
             <svg class="overlay" id="overlay" aria-hidden="true" focusable="false">
-              <line id="link" class="link"/>
-              <circle id="dot" r="2"/>
-              <line id="crossH"/>
-              <line id="crossV"/>
+              <line id="linkUnder" class="link under"/>
+              <line id="link" class="link over"/>
+              <g id="mark">
+                <circle class="ripple" r="8"/>
+                <path class="mark under" d="M-10 0H10M0 -10V10"/>
+                <path class="mark over" d="M-10 0H10M0 -10V10"/>
+              </g>
+              <circle id="dot" r="3"/>
             </svg>
           </div>
         </div>
@@ -36,8 +43,18 @@
         <div class="status">
           <p class="hint" id="hint">Drag the square or use the arrows.</p>
           <div class="result" id="result" hidden>
-            <p><strong id="resultDistance"></strong> <span id="resultMessage"></span></p>
-            <p class="detail" id="resultDetail"></p>
+            <svg class="loupe" viewBox="-38 -38 76 76" aria-hidden="true" focusable="false">
+              <circle class="lens" r="32"/>
+              <path class="axis" d="M-32 0H32M0 -32V32"/>
+              <line class="miss" id="loupeLine" x1="0" y1="0"/>
+              <rect class="shot" id="loupeShot" width="10" height="10" rx="2"/>
+              <text id="loupeZoom" x="37" y="36" text-anchor="end"></text>
+            </svg>
+            <div>
+              <p class="score"><strong id="resultDistance"></strong><span class="meter" id="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span></p>
+              <p class="verdict" id="resultMessage"></p>
+              <p class="detail" id="resultDetail"></p>
+            </div>
           </div>
         </div>
 
@@ -62,11 +79,25 @@
 
       <section class="view summary is-off" id="summary" aria-labelledby="summaryTitle">
         <h2 id="summaryTitle" tabindex="-1">You have an eye for this.</h2>
-        <dl class="stats">
-          <div><dt>Mean error</dt><dd id="meanError"></dd></div>
-          <div><dt>Best round</dt><dd id="bestError"></dd></div>
-        </dl>
-        <ol class="rounds" id="roundList" aria-label="Error per round"></ol>
+        <div class="recap">
+          <div class="map-wrap">
+            <svg class="map" viewBox="-70 -70 140 140" role="img" aria-label="Where each round landed relative to the centre">
+              <circle class="ring" r="60"/>
+              <circle class="ring inner" r="30"/>
+              <path class="axis" d="M-60 0H60M0 -60V60"/>
+              <g id="shots"></g>
+            </svg>
+            <p id="mapScale"></p>
+          </div>
+          <div class="figures">
+            <dl class="stats">
+              <div><dt>Mean error</dt><dd id="meanError"></dd></div>
+              <div><dt>Best round</dt><dd id="bestError"></dd></div>
+            </dl>
+            <ol class="rounds" id="roundList" aria-label="Error per round"></ol>
+            <p class="best-note" id="bestNote"></p>
+          </div>
+        </div>
         <button type="button" class="primary" id="restart">Try again</button>
       </section>
     </div>

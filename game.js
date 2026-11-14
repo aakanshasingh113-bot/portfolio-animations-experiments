@@ -23,6 +23,9 @@
     results: [],       // { dx, dy, distance } per submitted round
     submittedAt: 0,
   };
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const BEST_KEY = 'just-one-more-pixel:best-mean';
+  let countToken = 0;  // cancels a running count-up
   let drag = null;     // { id, gx, gy } while a pointer is dragging
 
   // Whole-pixel bounds keep 1px steps on the integer lattice after hitting a wall.
@@ -33,11 +36,31 @@
   const fmt = (v) => v.toFixed(1);
   const fmtDistance = (d) => (d < 0.05 ? '<0.1' : fmt(d)) + ' CSS px';
 
-  function verdict(d) {
-    if (d < 0.5) return 'Pixel perfect.';
-    if (d < 3) return 'That’s a designer’s eye.';
-    if (d < 8) return 'Almost. Just one more pixel.';
-    return 'Your eyes have opinions.';
+  const tier = (d) => (d < 0.5 ? 4 : d < 3 ? 3 : d < 8 ? 2 : 1);
+  const verdict = (d) => ['', 'Your eyes have opinions.', 'Almost. Just one more pixel.',
+    'That’s a designer’s eye.', 'Pixel perfect.'][tier(d)];
+
+  // Tick the visible number up to its final value; the final text is always exact.
+  function countUp(el, d) {
+    const token = ++countToken, t0 = performance.now();
+    if (reducedMotion.matches || d < 0.05) { el.textContent = fmtDistance(d); return; }
+    const tick = (now) => {
+      if (token !== countToken) return;
+      const k = Math.min(1, (now - t0) / 450);
+      el.textContent = k < 1 ? fmt(d * (1 - (1 - k) ** 3)) + ' CSS px' : fmtDistance(d);
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    tick(t0);
+  }
+
+  // Magnified view of the miss: crosshair = true centre, block = the square's centre.
+  function drawLoupe(dx, dy, distance) {
+    const zoom = Math.min(8, 23 / Math.max(distance, 1e-9));
+    const x = dx * zoom, y = dy * zoom;
+    const set = (id, attrs) => { for (const k in attrs) $(id).setAttribute(k, attrs[k]); };
+    set('loupeLine', { x2: x, y2: y });
+    set('loupeShot', { x: x - 5, y: y - 5 });
+    $('loupeZoom').textContent = (zoom >= 1 ? Math.round(zoom) : zoom.toFixed(1)) + '×';
   }
 
   function describeAxis(v, negative, positive, centred) {
@@ -70,9 +93,9 @@
     if (state.phase !== 'revealed') return;
     const set = (id, attrs) => { for (const k in attrs) $(id).setAttribute(k, attrs[k]); };
     set('link', { x1: cx, y1: cy, x2: tx, y2: ty });
+    set('linkUnder', { x1: cx, y1: cy, x2: tx, y2: ty });
     set('dot', { cx, cy });
-    set('crossH', { x1: tx - 7, y1: ty, x2: tx + 7, y2: ty });
-    set('crossV', { x1: tx, y1: ty - 7, x2: tx, y2: ty + 7 });
+    set('mark', { transform: `translate(${tx} ${ty})` });
   }
 
   function moveTo(ox, oy) {
@@ -95,7 +118,14 @@
     state.phase = 'play';
     game.classList.remove('is-revealed');
     setLocked(false);
+    countToken++;
     $('round').textContent = `Round ${state.round + 1} of ${ROUNDS}`;
+    [...$('pips').children].forEach((pip, i) => {
+      pip.className = i < state.round ? 'is-done' : i === state.round ? 'is-current' : '';
+    });
+    square.classList.remove('pop');
+    void square.offsetWidth; // restart the pop-in
+    square.classList.add('pop');
     $('hint').hidden = false;
     $('result').hidden = true;
     $('live').textContent = '';
@@ -114,7 +144,10 @@
 
     const detail = describeAxis(dx, 'left', 'right', 'centred horizontally') + ' · ' +
                    describeAxis(dy, 'above', 'below', 'centred vertically');
-    $('resultDistance').textContent = fmtDistance(distance);
+    countUp($('resultDistance'), distance);
+    drawLoupe(dx, dy, distance);
+    [...$('meter').children].forEach((box, i) => box.classList.toggle('on', i < tier(distance)));
+    $('pips').children[state.round].className = 'is-done';
     $('resultMessage').textContent = verdict(distance);
     $('resultDetail').textContent = detail;
     $('hint').hidden = true;
@@ -150,6 +183,21 @@
     $('roundList').innerHTML = errors
       .map((d, i) => `<li><span>Round ${i + 1}</span><b>${d < 0.05 ? '&lt;0.1' : fmt(d)} px</b></li>`)
       .join('');
+    // Shot map: all three placements on one scale that fits the widest miss.
+    const zoom = Math.min(12, 50 / Math.max(...errors, 1e-9));
+    $('shots').innerHTML = state.results.map((r, i) =>
+      `<g class="shot" transform="translate(${r.dx * zoom} ${r.dy * zoom})"><circle r="8"/><text>${i + 1}</text></g>`).join('');
+    $('mapScale').textContent = `Outer ring: ${fmt(60 / zoom)} px`;
+
+    // Personal best lives only in this browser; the game works without storage.
+    let best = NaN;
+    try { best = parseFloat(localStorage.getItem(BEST_KEY)); } catch (_) { /* storage unavailable */ }
+    const isBest = !(best <= mean);
+    if (isBest) { try { localStorage.setItem(BEST_KEY, String(mean)); } catch (_) { /* ignore */ } }
+    $('bestNote').innerHTML = isBest
+      ? (Number.isNaN(best) ? 'That’s your score to beat.' : '<strong>New personal best.</strong>')
+      : `Personal best: <strong>${fmtDistance(best)}</strong>`;
+
     $('live').textContent = '';
     game.classList.add('is-off');
     summary.classList.remove('is-off');
@@ -178,30 +226,33 @@
     const id = drag.id;
     drag = null;
     square.classList.remove('is-dragging');
-    try { square.releasePointerCapture(id); } catch (_) { /* already released */ }
+    try { surface.releasePointerCapture(id); } catch (_) { /* already released */ }
   }
 
-  surface.addEventListener('pointerdown', () => surface.focus({ preventScroll: true }));
-
-  square.addEventListener('pointerdown', (e) => {
-    if (state.phase !== 'play' || drag || e.button !== 0) return;
-    e.preventDefault();
+  // Drag listeners live on the surface and hit-test with the game's own
+  // coordinates, so a grab works the same whatever the square is animating.
+  surface.addEventListener('pointerdown', (e) => {
     surface.focus({ preventScroll: true });
+    if (state.phase !== 'play' || drag || e.button !== 0) return;
     const p = pointerPos(e);
     // Remember where inside the square it was grabbed so it does not jump.
-    drag = { id: e.pointerId, gx: p.x - (state.w / 2 + state.ox), gy: p.y - (state.h / 2 + state.oy) };
+    const gx = p.x - (state.w / 2 + state.ox), gy = p.y - (state.h / 2 + state.oy);
+    const reach = HALF + (e.pointerType === 'mouse' ? 0 : 6); // a little slack for fingers
+    if (Math.abs(gx) > reach || Math.abs(gy) > reach) return;
+    e.preventDefault();
+    drag = { id: e.pointerId, gx, gy };
     square.classList.add('is-dragging');
-    try { square.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+    try { surface.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
   });
 
-  square.addEventListener('pointermove', (e) => {
+  surface.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     const p = pointerPos(e);
     moveTo(p.x - drag.gx - state.w / 2, p.y - drag.gy - state.h / 2);
   });
 
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-    square.addEventListener(type, (e) => { if (drag && e.pointerId === drag.id) endDrag(); });
+    surface.addEventListener(type, (e) => { if (drag && e.pointerId === drag.id) endDrag(); });
   }
   square.addEventListener('dragstart', (e) => e.preventDefault());
 

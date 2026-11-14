@@ -27,7 +27,7 @@ const wait = (page, ms = 350) => page.waitForTimeout(ms);
   const browser = await chromium.launch();
 
   // ---------- Desktop ----------
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -166,14 +166,17 @@ const wait = (page, ms = 350) => page.waitForTimeout(ms);
     const o = document.getElementById('overlay'), sr = document.getElementById('surface').getBoundingClientRect(), or = o.getBoundingClientRect();
     return {
       link: [g('link', 'x1'), g('link', 'y1'), g('link', 'x2'), g('link', 'y2')],
-      cross: [g('crossH', 'x1'), g('crossH', 'x2'), g('crossH', 'y1'), g('crossV', 'y1'), g('crossV', 'y2'), g('crossV', 'x1')],
+      cross: document.getElementById('mark').getAttribute('transform'),
+      loupe: [g('loupeLine', 'x2'), g('loupeLine', 'y2'), document.getElementById('loupeZoom').textContent].join(),
+      meter: document.querySelectorAll('#meter .on').length,
       sameBox: or.left === sr.left && or.top === sr.top && or.width === sr.width && or.height === sr.height,
       pe: getComputedStyle(o).pointerEvents, op: getComputedStyle(o).opacity,
-      ctm: (() => { const m = document.getElementById('crossH').getScreenCTM(); return [m.a, m.d, m.e - sr.left, m.f - sr.top]; })(),
+      ctm: (() => { const m = document.getElementById('link').getScreenCTM(); return [m.a, m.d, m.e - sr.left, m.f - sr.top]; })(),
     };
   });
   check('dashed line runs square centre -> true centre', rev.link.join() === '283,154,280,150');
-  check('crosshair centred on true centre', rev.cross.join() === '273,287,150,143,157,280');
+  check('crosshair centred on true centre', rev.cross === 'translate(280 150)', rev.cross);
+  check('loupe shows magnified miss, meter shows tier', rev.loupe === [3 * 4.6, 4 * 4.6, '5\u00D7'].join() && rev.meter === 2, rev.loupe);
   check('overlay maps 1:1 onto surface, no pointer events, visible', rev.sameBox && rev.pe === 'none' && rev.op === '1' && rev.ctm.join() === '1,1,0,0', JSON.stringify(rev.ctm));
 
   // Locked after submit; duplicate submissions ignored
@@ -245,6 +248,8 @@ const wait = (page, ms = 350) => page.waitForTimeout(ms);
   check('mean error correct', (await page.textContent('#meanError')) === mean.toFixed(1) + 'CSS px', await page.textContent('#meanError'));
   check('best error correct', (await page.textContent('#bestError')) === '<0.1CSS px', await page.textContent('#bestError'));
   check('three round errors listed', (await page.$$eval('#roundList b', (n) => n.map((x) => x.textContent))).join('|') === '5.0 px|<0.1 px|2.9 px');
+  check('shot map plots the three rounds', await page.evaluate(() => [...document.querySelectorAll('#shots .shot')].map((g) => g.getAttribute('transform')).join('|') === 'translate(30 40)|translate(0 0)|translate(-24 -17)') && (await page.textContent('#mapScale')) === 'Outer ring: 6.0 px');
+  check('personal best noted', (await page.textContent('#bestNote')).length > 0);
   await shot(page, 'desktop-summary.png');
 
   await page.keyboard.press('Tab');
@@ -328,6 +333,9 @@ const wait = (page, ms = 350) => page.waitForTimeout(ms);
   await shot(p2, 'desktop-play.png');
   await p2.click('#primary');
   const after = await tops();
+  await p2.waitForTimeout(700);
+  check('count-up settles on the exact value', /^(\d+\.\d|<0\.1) CSS px$/.test(await p2.textContent('#resultDistance')) && (await p2.textContent('#live')).includes(await p2.textContent('#resultDistance')));
+  await shot(p2, 'desktop-reveal-motion.png');
   check('no layout shift on reveal', before === after);
   await p2.waitForTimeout(350);
   await p2.click('#primary'); await p2.click('#primary'); await p2.waitForTimeout(350);
