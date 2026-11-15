@@ -29,15 +29,15 @@
   nav .try{background:var(--accent);color:#fff;padding:9px 16px;border-radius:999px;font-size:14px}
 
   :root{--s1:8px;--s2:16px;--s3:24px;--s4:32px;--s5:48px;--s6:64px;--s7:96px;--s8:144px}
-  .hero{padding:var(--s7) 0 var(--s6);text-align:center}
+  .hero{padding-top:var(--s7);padding-bottom:var(--s6);text-align:center}
   .pill{display:inline-flex;align-items:center;gap:8px;font:500 13px var(--sans);color:var(--accent-strong);background:var(--tint);padding:7px 14px;border-radius:999px}
   .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
   .hero h1{font:700 clamp(52px,7.4vw,108px)/.95 var(--sans);letter-spacing:-.05em;margin:var(--s3) auto 0}
   .hero h1 em{font-style:normal;color:var(--accent)}
   .hero .lead{font:400 clamp(18px,1.6vw,22px)/1.5 var(--sans);color:var(--muted);max-width:620px;margin:var(--s3) auto 0}
   .btns{display:flex;gap:12px;justify-content:center;margin-top:var(--s5)}
-  .btn{padding:14px 24px;border-radius:999px;font-weight:600;font-size:16px;transition:transform .2s,background .2s}
-  .btn.p{background:var(--accent);color:#fff}.btn.p:hover{background:var(--accent-strong);transform:translateY(-2px)}
+  .btn{padding:15px 26px;border-radius:999px;font-weight:600;font-size:16px;line-height:1;justify-content:center;white-space:nowrap;min-height:52px;transition:transform .2s,background .2s,box-shadow .2s}
+  .btn.p{background:var(--accent);color:#fff;box-shadow:0 8px 20px -10px rgba(29,67,54,.7)}.btn.p:hover{background:var(--accent-strong);transform:translateY(-2px)}
   .btn.s{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}.btn.s:hover{transform:translateY(-2px)}
   .meta{display:grid;grid-template-columns:repeat(4,1fr);margin:var(--s6) 0 0;border-top:1px solid var(--line);text-align:left}
   .meta div{padding:var(--s3) var(--s3) 0 0}
@@ -146,18 +146,19 @@
     .end{padding:56px 28px}.end a{justify-self:start}
     section.w{padding-top:var(--s7)}
     .feat{gap:var(--s4);margin-bottom:var(--s6)}
-    .hero{padding-top:var(--s6)}
+
   }
 
   @media (max-width:640px){
     body{font-size:16px}
     .w{padding:0 18px}
     nav .w{height:60px}
-    .hero{padding:var(--s5) 0 var(--s5)}
+    .hero{padding-top:var(--s5);padding-bottom:var(--s5)}
     .hero h1{font-size:clamp(44px,13vw,60px)}
     .hero .lead{font-size:17px;margin-top:var(--s2)}
-    .btns{margin-top:var(--s4);flex-direction:column;align-items:stretch;gap:10px}
-    .btn{text-align:center;padding:15px 20px}
+    .btns{margin-top:var(--s4);flex-direction:column;align-items:stretch;gap:10px;max-width:420px;margin-left:auto;margin-right:auto}
+    .btn{display:flex;width:100%;padding:16px 20px;font-size:16px}
+    nav .try{padding:8px 14px;font-size:13px}
     .stage{padding:20px 10px 0;border-radius:16px}
     .bar{padding:8px 10px}.bar i{width:8px;height:8px}.bar span{font-size:10px}
     .meta{grid-template-columns:1fr 1fr;margin-top:var(--s4)}
@@ -204,7 +205,7 @@
     .learn{gap:var(--s4)}
     .learn h3{font-size:21px}
     .end{margin-top:var(--s7);padding:var(--s5) 22px;border-radius:18px;gap:var(--s3)}
-    .end a{justify-self:stretch;text-align:center}
+    .end a{display:flex;justify-self:stretch;width:100%;padding:17px 20px;font-size:16px}
     footer{padding:var(--s5) 0 var(--s4);font-size:13px}
   }
   .swipe{display:none;font-size:13px;color:var(--muted);margin-top:10px}
@@ -213,7 +214,7 @@
 
   /* ---- interactions ---- */
   .progress{position:fixed;top:0;left:0;height:3px;width:100%;background:var(--accent);transform-origin:0 50%;transform:scaleX(0);z-index:30}
-  .btn,.try,.end a{position:relative;display:inline-flex;align-items:center;gap:8px}
+  .btn,.try,.end a{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
   .btn .ar,.try .ar,.end a .ar{display:inline-block;transition:transform .25s cubic-bezier(.2,.7,.2,1)}
   .btn:hover .ar,.try:hover .ar,.end a:hover .ar{transform:translate(3px,-3px)}
   .btn.s:hover .ar{transform:translateY(3px)}
@@ -275,8 +276,8 @@
   </div>
   <dl class="meta">
     <div><dt class="mono">Role</dt><dd>Product design &amp; build</dd></div>
-    <div><dt class="mono">Scope</dt><dd>Research, UX, UI, prompts</dd></div>
-    <div><dt class="mono">Stack</dt><dd>Next.js, Gemini, Vercel</dd></div>
+    <div><dt class="mono">Scope</dt><dd>Research, UX, UI, prompts, build</dd></div>
+    <div><dt class="mono">Stack</dt><dd>Claude Code, Next.js, Gemini, Vercel</dd></div>
     <div><dt class="mono">Year</dt><dd>2026</dd></div>
   </dl>
 </div>
