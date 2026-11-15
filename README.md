@@ -54,6 +54,10 @@ The key is only read on the server (`src/app/api/analyse/route.ts`). It is never
 
 Locally, live mode uses a simple in-memory request limit. That is fine on your own machine but is **not** a safeguard for a public site — see the next section.
 
+### Free alternative: Google Gemini
+
+Instead of `ANTHROPIC_API_KEY`, set `GEMINI_API_KEY` (free key from <https://aistudio.google.com/> → API keys). Optionally set `GEMINI_MODEL` (default `gemini-4-hydrogen`). If both keys are set, Claude is used. Free-tier keys have daily limits, and Google may use free-tier inputs to improve its models, so use non-confidential briefs.
+
 ## 5. Configure public request limits
 
 Each live analysis costs money, so a public deployment must cap usage. In production the app **stays in demo mode** unless a shared limit store is configured, even if an API key is present.
