@@ -10,277 +10,233 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#202824; --bg:#f6f5f1; --soft:#eaf1ec; --grey:#566058; --line:#dce1da; --surface:#ffffff;
-    --accent:#285747; --accent-strong:#1d4336; --tint:#eaf1ec;
-    --sans:"Geist", "Helvetica Neue", Arial, sans-serif;
-    --mono:"Geist Mono", ui-monospace, monospace;
+    --bg:#f6f5f1; --surface:#fff; --ink:#202824; --muted:#566058; --line:#dce1da;
+    --accent:#285747; --accent-strong:#1d4336; --tint:#eaf1ec; --hl:#cfe0d5; --caution:#f6ecd6;
+    --sans:"Geist","Helvetica Neue",Arial,sans-serif; --mono:"Geist Mono",ui-monospace,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{background:var(--bg);color:var(--ink);font:400 18px/1.55 var(--sans);-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+  body{background:var(--bg);color:var(--ink);font:400 18px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
   a{color:inherit;text-decoration:none}
-  .w{max-width:1320px;margin:0 auto;padding:0 40px}
-  .mono{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
-  .g{color:var(--grey)}
-  .acc{color:var(--accent)}
+  img{display:block;width:100%;height:auto}
+  .w{max-width:1280px;margin:0 auto;padding:0 40px}
+  .mono{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .muted{color:var(--muted)}
 
-  /* nav */
-  nav{position:fixed;inset:0 0 auto;z-index:20;background:rgba(246,245,241,.85);backdrop-filter:blur(10px);color:var(--ink)}
-  nav .w{display:flex;justify-content:space-between;align-items:center;height:72px}
-  nav a{font:500 14px var(--sans)}
+  nav{position:sticky;top:0;z-index:20;background:rgba(246,245,241,.88);backdrop-filter:blur(12px);border-bottom:1px solid transparent;transition:border-color .3s}
+  nav.s{border-color:var(--line)}
+  nav .w{display:flex;justify-content:space-between;align-items:center;height:68px;font-size:15px;font-weight:500}
+  nav .try{background:var(--accent);color:#fff;padding:9px 16px;border-radius:999px;font-size:14px}
 
-  /* hero */
-  .hero{min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:140px 0 48px}
-  .hero h1{font:800 clamp(72px,15.5vw,236px)/.82 var(--sans);letter-spacing:-.065em;margin-left:-.05em}
-  .hero h1 > span{display:block}
-  .hero h1 .dot{color:var(--accent)}
-  .hero h1 > span:last-child{color:var(--accent)}
-  .hero-row{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;margin-top:64px;padding-top:24px;border-top:1.5px solid var(--ink);align-items:start}
-  .hero-row p.lead{font:500 22px/1.3 var(--sans);letter-spacing:-.02em;max-width:440px}
-  .hero-row dt{margin-bottom:10px}
-  .hero-row dd{font:500 16px/1.4 var(--sans)}
+  .hero{padding:96px 0 64px}
+  .hero h1{font:700 clamp(64px,11vw,168px)/.88 var(--sans);letter-spacing:-.055em;margin-top:28px}
+  .hero h1 em{font-style:normal;color:var(--accent)}
+  .hero-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:32px;margin-top:56px;padding-top:24px;border-top:1.5px solid var(--ink)}
+  .hero-grid .lead{font:500 22px/1.35 var(--sans);letter-spacing:-.02em}
+  .hero-grid dd{font-weight:500;font-size:16px;margin-top:10px;line-height:1.4}
 
-  /* product shot */
-  .shot{background:var(--soft);border-radius:4px;padding:8vw 6vw 0;overflow:hidden;margin-top:24px}
-  .ui{background:var(--surface);border-radius:14px 14px 0 0;box-shadow:0 40px 120px -30px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.06);overflow:hidden}
-  .ui-top{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--line);font:600 14px var(--sans)}
-  .ui-top .live{font:500 11px var(--mono);letter-spacing:.06em;padding:5px 9px;border-radius:999px;background:var(--tint);color:var(--accent)}
-  .ui-body{display:grid;grid-template-columns:1fr 1.35fr}
-  .ui-brief{padding:28px;border-right:1px solid var(--line);font-size:14.5px;line-height:1.75;color:#333}
-  .ui-brief .mono{display:block;margin-bottom:16px}
-  .hl{background:linear-gradient(transparent 58%,#cfe0d5 58%)}
-  .ui-out{padding:28px;display:grid;gap:12px}
-  .row{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:14px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.5}
-  .row:first-of-type{border-top:0}
-  .row .k{font:500 10.5px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--grey)}
-  .row .k.r{color:var(--accent)}
-  .row q{display:block;margin-top:4px;color:var(--grey);font-size:13px;quotes:none}
-  .row q::before{content:"“"} .row q::after{content:"”"}
+  .stage{background:var(--accent);border-radius:24px;padding:72px 72px 0;overflow:hidden}
+  .browser{border-radius:12px 12px 0 0;overflow:hidden;box-shadow:0 30px 80px -20px rgba(10,30,20,.5);background:#fff}
+  .bar{display:flex;align-items:center;gap:7px;padding:12px 16px;background:#eceae4}
+  .bar i{width:11px;height:11px;border-radius:50%;background:#d3d0c8}
+  .bar span{margin:0 auto;font:400 12px var(--mono);color:var(--muted);background:#f6f5f1;padding:4px 40px;border-radius:6px}
+  .card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px var(--line),0 24px 60px -24px rgba(10,30,20,.3)}
 
-  /* sections */
-  section{padding:180px 0 0}
-  .sec-head{display:grid;grid-template-columns:1fr 3fr;gap:40px;margin-bottom:72px}
-  .sec-head .mono{padding-top:16px}
-  h2{font:700 clamp(44px,6.4vw,96px)/.95 var(--sans);letter-spacing:-.05em}
-  h3{font:600 22px/1.2 var(--sans);letter-spacing:-.025em;margin-bottom:10px}
-  .body{display:grid;grid-template-columns:1fr 3fr;gap:40px}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:48px;font-size:19px;line-height:1.55;color:#333}
+  section{padding:160px 0 0}
+  .head{display:grid;grid-template-columns:1fr 2.4fr;gap:40px;margin-bottom:64px}
+  .head .mono{padding-top:14px}
+  h2{font:700 clamp(40px,5.6vw,80px)/.98 var(--sans);letter-spacing:-.045em}
+  h3{font:600 28px/1.15 var(--sans);letter-spacing:-.03em;margin:16px 0 14px}
+  .sub{margin-top:28px;font-size:20px;max-width:700px;color:var(--muted)}
 
-  /* statement */
-  .statement{padding:180px 0 0}
-  .statement p{font:600 clamp(36px,5vw,76px)/1.04 var(--sans);letter-spacing:-.045em;max-width:1150px}
-  .statement p .g{color:#a3aca5}
+  .brief{background:var(--surface);border-radius:24px;padding:72px}
+  .brief .mono{margin-bottom:28px;display:block}
+  .brief blockquote{font:500 clamp(30px,4vw,56px)/1.2 var(--sans);letter-spacing:-.035em}
+  .brief mark{background:linear-gradient(transparent 60%,var(--hl) 60%);color:inherit;padding:0 2px}
+  .notes{display:flex;gap:10px;flex-wrap:wrap;margin-top:44px}
+  .notes span{font:500 15px var(--sans);padding:9px 16px;border-radius:999px;background:var(--tint);color:var(--accent-strong)}
+  .notes span.c{background:var(--caution);color:#6a4a0c}
 
-  /* before/after */
-  .vs{display:grid;grid-template-columns:1fr 1fr;border-top:1.5px solid var(--ink)}
-  .vs > div{padding:36px 40px 40px 0}
-  .vs > div + div{padding-left:40px;border-left:1px solid var(--line)}
-  .vs ul{list-style:none;margin-top:24px}
-  .vs li{padding:16px 0;border-top:1px solid var(--line);font:500 20px/1.3 var(--sans);letter-spacing:-.02em}
-  .vs .no li{color:var(--grey);text-decoration:line-through;text-decoration-color:#b8c0ba}
+  .six{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  .six div{background:var(--surface);border-radius:16px;padding:24px 20px 26px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
+  .six b{font:700 40px/1 var(--sans);letter-spacing:-.04em;color:var(--accent)}
+  .six h4{font:600 18px/1.25 var(--sans);letter-spacing:-.01em}
+  .six p{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.45}
 
-  /* six */
-  .six{display:grid;grid-template-columns:repeat(3,1fr);border-top:1.5px solid var(--ink)}
-  .six div{padding:40px 40px 48px 0;border-bottom:1px solid var(--line)}
-  .six div:not(:nth-child(3n+1)){padding-left:40px;border-left:1px solid var(--line)}
-  .six .n{font:700 64px/1 var(--sans);letter-spacing:-.05em;margin-bottom:40px}
-  .six div:nth-child(5) .n{color:var(--accent)}
-  .six p{color:var(--grey);font-size:16px}
+  .feat{display:grid;grid-template-columns:1fr 1.5fr;gap:72px;align-items:center;margin-bottom:56px}
+  .feat.flip{grid-template-columns:1.5fr 1fr}
+  .feat.flip .txt{order:2}
+  .feat .txt p{color:var(--muted);font-size:18px}
+  .feat .txt ul{list-style:none;margin-top:24px;border-top:1px solid var(--line)}
+  .feat .txt li{padding:12px 0;border-bottom:1px solid var(--line);font-size:15.5px}
+  .feat .txt li::before{content:"→  ";color:var(--accent);font-weight:600}
+  .pad{background:var(--tint);border-radius:24px;padding:48px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .duo .pad{padding:36px;height:620px;overflow:hidden}
+  .cap{margin-top:18px;font-size:15.5px;color:var(--muted)}
+  .cap strong{color:var(--ink)}
 
-  /* decisions */
-  .dec{border-top:1.5px solid var(--ink)}
-  .dec > div{display:grid;grid-template-columns:1fr 1.5fr 1.5fr;gap:40px;padding:40px 0;border-bottom:1px solid var(--line);align-items:baseline}
-  .dec h3{font-size:30px;letter-spacing:-.035em}
-  .dec p{color:#555;font-size:17px}
+  .phones{background:var(--accent);border-radius:24px;padding:96px 40px 72px;display:flex;justify-content:center;gap:48px;align-items:center}
+  .phone{width:min(290px,27vw);border-radius:44px;padding:10px;background:#11211a;box-shadow:0 40px 80px -20px rgba(0,0,0,.5)}
+  .phone img{border-radius:34px}
+  .phone:nth-child(2){transform:translateY(-32px)}
 
-  /* black band */
-  .dark{background:var(--tint);color:var(--ink);margin-top:180px;padding:160px 0}
-  .dark h2{color:var(--accent-strong)}
-  .dark .g{color:var(--grey)}
-  .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1.5px solid var(--accent)}
-  .trust div{padding:40px 32px 0 0}
-  .trust div+div{padding-left:32px;border-left:1px solid #c9d8cd}
-  .trust .ic{font:700 44px/1 var(--sans);color:var(--accent);margin-bottom:32px;letter-spacing:-.04em}
-  .trust p{color:var(--grey);font-size:16px}
-  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:96px}
-  .st{background:var(--surface);border:1px solid #d3e0d6;border-radius:12px;padding:28px;min-height:190px;display:flex;flex-direction:column;justify-content:space-between}
-  .st strong{font:600 19px/1.25 var(--sans);letter-spacing:-.02em;display:block;margin-bottom:6px}
-  .st p{color:var(--grey);font-size:15px}
-  .st .mono{color:var(--grey)}
-  .st.a .mono{color:var(--accent)}
-  .bar{height:6px;border-radius:3px;background:linear-gradient(90deg,#e3ebe5 25%,#f2f6f3 50%,#e3ebe5 75%);background-size:200% 100%;animation:sh 1.4s infinite;margin-top:10px}
-  @keyframes sh{to{background-position:-200% 0}}
+  .pr{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .pr div{background:var(--surface);border-radius:16px;padding:28px}
+  .pr .i{width:44px;height:44px;border-radius:12px;background:var(--tint);color:var(--accent);display:grid;place-items:center;font:600 17px var(--mono);margin-bottom:40px}
+  .pr h4{font:600 19px/1.25 var(--sans);letter-spacing:-.02em;margin-bottom:8px}
+  .pr p{font-size:15px;color:var(--muted)}
 
-  /* flow */
-  .flow{display:grid;grid-template-columns:repeat(4,1fr);border-top:1.5px solid var(--ink)}
-  .flow div{padding:32px 32px 0 0;position:relative}
-  .flow div+div{padding-left:32px;border-left:1px solid var(--line)}
-  .flow .n{font:700 120px/.8 var(--sans);letter-spacing:-.07em;-webkit-text-stroke:1.5px var(--accent);color:transparent;margin-bottom:28px}
-  .flow p{color:var(--grey);font-size:16px}
+  .learn{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
+  .learn div{border-top:1.5px solid var(--ink);padding-top:6px}
+  .learn p{color:var(--muted)}
 
-  /* learn */
-  .learn{display:grid;grid-template-columns:repeat(3,1fr);gap:48px}
-  .learn h3{font-size:30px;letter-spacing:-.035em;padding-top:24px;border-top:1.5px solid var(--ink)}
-  .learn p{color:#555}
+  .end{margin:160px 0 0;background:var(--accent);color:#fff;border-radius:24px;padding:96px 72px;display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:end}
+  .end h2{color:#fff}
+  .end p{color:#bcd3c7;margin-top:20px;font-size:19px}
+  .end a{justify-self:end;background:#fff;color:var(--accent);padding:18px 28px;border-radius:999px;font-weight:600;font-size:17px;transition:transform .2s}
+  .end a:hover{transform:translateY(-3px)}
+  footer{display:flex;justify-content:space-between;padding:48px 0;font-size:14px;color:var(--muted)}
 
-  /* end */
-  .end{padding:200px 0 56px}
-  .end a.big{display:block;font:800 clamp(64px,12vw,190px)/.85 var(--sans);letter-spacing:-.065em;transition:color .25s}
-  .end a.big:hover{color:var(--accent)}
-  .end a.big span{display:inline-block;transition:transform .3s}
-  .end a.big:hover span{transform:translate(12px,-12px)}
-  footer{display:flex;justify-content:space-between;margin-top:120px;padding-top:24px;border-top:1px solid var(--line)}
-
-  .rv{opacity:0;transform:translateY(40px);transition:opacity 1s cubic-bezier(.2,.7,.2,1),transform 1s cubic-bezier(.2,.7,.2,1)}
+  .rv{opacity:0;transform:translateY(32px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
   .rv.in{opacity:1;transform:none}
 
-  @media (max-width:900px){
-    .w{padding:0 22px}
-    .hero-row{grid-template-columns:1fr 1fr}
-    .hero-row p.lead{grid-column:1/-1}
-    .sec-head,.body,.cols,.vs,.dec > div{grid-template-columns:1fr;gap:16px}
-    .vs > div + div{padding-left:0;border-left:0}
-    .six,.trust,.flow,.learn,.states{grid-template-columns:1fr 1fr}
-    .six div,.six div:not(:nth-child(3n+1)),.trust div,.trust div+div,.flow div,.flow div+div{padding:32px 20px 32px 0;border-left:0}
-    .ui-body{grid-template-columns:1fr}
-    .ui-brief{border-right:0;border-bottom:1px solid var(--line)}
-    section,.statement{padding-top:120px}
+  @media (max-width:980px){
+    .w{padding:0 20px}
+    .hero-grid{grid-template-columns:1fr 1fr}
+    .hero-grid .lead{grid-column:1/-1}
+    .head,.feat,.feat.flip,.duo,.end{grid-template-columns:1fr;gap:24px}
+    .feat.flip .txt{order:0}
+    .six{grid-template-columns:repeat(2,1fr)}
+    .pr{grid-template-columns:1fr 1fr}
+    .learn{grid-template-columns:1fr}
+    .stage{padding:28px 14px 0;border-radius:16px}
+    .pad,.duo .pad{padding:18px;height:auto}
+    .brief{padding:36px 24px}
+    .phones{gap:12px;padding:48px 12px}
+    .phone{border-radius:24px;padding:5px}.phone img{border-radius:20px}
+    .phone:nth-child(2){transform:none}
+    .end{padding:56px 28px}.end a{justify-self:start}
+    section{padding-top:110px}
   }
-  @media (max-width:560px){
-    .six,.trust,.flow,.learn,.states,.hero-row{grid-template-columns:1fr}
-    .row{grid-template-columns:1fr;gap:4px}
-  }
-  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}.bar{animation:none}}
+  @media (max-width:560px){.pr,.hero-grid,.six{grid-template-columns:1fr}.six div{min-height:0;gap:20px}}
+  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
 <body>
 
-<nav><div class="w"><a href="#">← Work</a><a href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Try it ↗</a></div></nav>
+<nav id="nav"><div class="w"><a href="#">← Work</a><a class="try" href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Try it live ↗</a></div></nav>
 
 <header class="hero w">
-  <h1><span>Brief</span><span>Decoder<span class="dot">.</span></span></h1>
-  <div class="hero-row">
+  <span class="mono">AI experiment — Case study</span>
+  <h1>Brief<br><em>Decoder.</em></h1>
+  <div class="hero-grid">
     <p class="lead">An AI tool that separates what a design brief says from what still needs a conversation.</p>
-    <dl><dt class="mono g">Role</dt><dd>Product design<br>&amp; build</dd></dl>
-    <dl><dt class="mono g">Stack</dt><dd>Next.js, Gemini,<br>Vercel</dd></dl>
-    <dl><dt class="mono g">Year</dt><dd>2026</dd></dl>
+    <dl><dt class="mono">Role</dt><dd>Product design &amp; build</dd></dl>
+    <dl><dt class="mono">Stack</dt><dd>Next.js, Gemini, Vercel</dd></dl>
+    <dl><dt class="mono">Year</dt><dd>2026</dd></dl>
   </div>
 </header>
 
 <div class="w rv">
-  <div class="shot">
-    <div class="ui" role="img" aria-label="Brief Decoder analysing a yoga studio app brief">
-      <div class="ui-top">Brief Decoder <span class="live">● LIVE AI</span></div>
-      <div class="ui-body">
-        <div class="ui-brief">
-          <span class="mono g">Original brief</span>
-          We need a new app for our yoga studio so members can book classes. It should feel <span class="hl">premium</span> but also be <span class="hl">really simple</span> for older members. We want it live <span class="hl">before the summer rush</span>, ideally in 3 weeks.<br><br>
-          Must have: booking, payments, a schedule and push notifications. Maybe a community feature too.<br><br>
-          <span class="hl">Budget is tight.</span> Keep it minimal but make sure it stands out.
-        </div>
-        <div class="ui-out">
-          <div class="row"><span class="k">Stated</span><div>Members can book classes in the app.<q>so members can book classes</q></div></div>
-          <div class="row"><span class="k">Unclear</span><div>"Premium" could mean polish, pricing or features.<q>It should feel premium</q></div></div>
-          <div class="row"><span class="k r">Conflict</span><div>Four core features, three weeks, tight budget.<q>ideally in 3 weeks</q></div></div>
-          <div class="row"><span class="k">Missing</span><div>iOS, Android or both? Which payment provider?</div></div>
-          <div class="row"><span class="k">Ask first</span><div>Is the date fixed, and what can move to release two?</div></div>
-        </div>
-      </div>
+  <div class="stage">
+    <div class="browser"><div class="bar"><i></i><i></i><i></i><span>brief-decoder.vercel.app</span></div>
+      <img src="case-study/hero.webp" alt="Brief Decoder: the original brief on the left, the analysis with a source quote on the right" width="1800" height="1250">
     </div>
   </div>
 </div>
 
-<div class="statement w rv">
-  <p>Briefs look complete. <span class="g">They mix requirements, wishes and contradictions in one paragraph — and the gaps surface after the screens are designed.</span></p>
-</div>
-
 <section class="w">
-  <div class="sec-head"><span class="mono g">01 / Problem</span><h2>A confident summary<br>is the wrong answer.</h2></div>
-  <div class="body"><span></span>
-    <div class="cols">
-      <p>Most design work starts from a Slack message or an email. Facts, guesses and conflicts all look the same on the page.</p>
-      <p>Generic AI makes it worse: it fills every gap smoothly, so a vague brief comes back looking finished. The job isn't summarising. It's separating.</p>
-    </div>
+  <div class="head">
+    <span class="mono">01 — The problem</span>
+    <div><h2>Briefs look complete. They rarely are.</h2><p class="sub">Design work usually starts from a Slack message. Requirements, wishes and contradictions sit in the same paragraph, and the gaps surface after the screens are designed.</p></div>
   </div>
-</section>
-
-<section class="w rv">
-  <div class="vs">
-    <div class="no"><span class="mono g">Typical AI summary</span><ul><li>Rewrites the brief more smoothly</li><li>Invents audiences and deadlines</li><li>Buries contradictions</li><li>No way to check it</li></ul></div>
-    <div><span class="mono acc">Brief Decoder</span><ul><li>Keeps stated and open apart</li><li>Leaves gaps empty, not padded</li><li>Names conflicts, quotes both sides</li><li>Exact source words for every claim</li></ul></div>
+  <div class="brief rv">
+    <span class="mono">A typical brief, in full</span>
+    <blockquote>“We need to <mark>improve</mark> the health app dashboard. Make it <mark>modern</mark> and <mark>engaging</mark>. Add <mark>personalisation</mark>. Need it by <mark>Friday</mark>.”</blockquote>
+    <div class="notes"><span>Who is it for?</span><span>What's wrong today?</span><span>Modern how?</span><span>Which Friday?</span><span class="c">No success measure</span></div>
   </div>
 </section>
 
 <section class="w">
-  <div class="sec-head"><span class="mono g">02 / Framework</span><h2>Six ways to<br>read a brief.</h2></div>
+  <div class="head">
+    <span class="mono">02 — The approach</span>
+    <div><h2>Don't summarise.<br>Separate.</h2><p class="sub">A generic AI summary fills every gap smoothly, so a vague brief comes back looking finished. Brief Decoder reads it through six lenses instead, and never invents what isn't there.</p></div>
+  </div>
   <div class="six rv">
-    <div><div class="n">01</div><h3>Stated</h3><p>What the brief says, in its exact words.</p></div>
-    <div><div class="n">02</div><h3>Unclear</h3><p>Wording with more than one reading.</p></div>
-    <div><div class="n">03</div><h3>Missing</h3><p>Absent details that could change the work.</p></div>
-    <div><div class="n">04</div><h3>Assumptions</h3><p>Guesses you'd act on without noticing.</p></div>
-    <div><div class="n">05</div><h3>Conflicts</h3><p>Requests that pull against each other.</p></div>
-    <div><div class="n">06</div><h3>Questions</h3><p>One prioritised list for the stakeholder.</p></div>
+    <div><b>01</b><div><h4>Stated</h4><p>What it says, in exact words</p></div></div>
+    <div><b>02</b><div><h4>Unclear</h4><p>Wording with two readings</p></div></div>
+    <div><b>03</b><div><h4>Missing</h4><p>Absent details that matter</p></div></div>
+    <div><b>04</b><div><h4>Assumptions</h4><p>Guesses to confirm</p></div></div>
+    <div><b>05</b><div><h4>Conflicts</h4><p>Requests that clash</p></div></div>
+    <div><b>06</b><div><h4>Questions</h4><p>One ranked list to ask</p></div></div>
   </div>
 </section>
 
 <section class="w">
-  <div class="sec-head"><span class="mono g">03 / Decisions</span><h2>Built to be<br>used, not read.</h2></div>
-  <div class="dec rv">
-    <div><h3>Source quotes</h3><p>Every claim shows the brief's exact words.</p><p class="g">Trust comes from traceability, not reassuring copy.</p></div>
-    <div><h3>One question list</h3><p>Merged and ranked "before designing" or "later".</p><p class="g">Stakeholders answer five sharp questions, not twenty.</p></div>
-    <div><h3>Confirm or reject</h3><p>Assumptions become explicit decisions.</p><p class="g">No silent defaults carried into the design.</p></div>
-    <div><h3>Working brief</h3><p>Answers and edits combine into a clean brief.</p><p class="g">Copy or download it straight into real work.</p></div>
-  </div>
-</section>
+  <div class="head"><span class="mono">03 — The experience</span><h2>From vague to<br>actionable.</h2></div>
 
-<div class="dark">
-  <div class="w">
-    <div class="sec-head"><span class="mono g">04 / Designing for AI</span><h2>Accuracy over<br>fluency.</h2></div>
-    <div class="trust rv">
-      <div><div class="ic">“”</div><h3>Quote checking</h3><p>Quotes are matched word-for-word. Anything unfound is flagged unverified, never fact.</p></div>
-      <div><div class="ic">∅</div><h3>Nothing invented</h3><p>No made-up audiences, metrics or deadlines. Empty beats padded.</p></div>
-      <div><div class="ic">{ }</div><h3>Brief as data</h3><p>Instructions hidden in a pasted brief are ignored.</p></div>
-      <div><div class="ic">◐</div><h3>Private by default</h3><p>No database, no tracking. Work disappears on reload.</p></div>
-    </div>
-    <div class="states rv">
-      <div class="st"><span class="mono">Empty</span><div><strong>Clarity starts here.</strong><p>Shows what you'll get before you type.</p></div></div>
-      <div class="st a"><span class="mono">Loading</span><div><strong>Reading your brief…</strong><div class="bar"></div><div class="bar" style="width:62%"></div></div></div>
-      <div class="st"><span class="mono">Too long</span><div><strong>Over 12,000 characters</strong><p>Nothing is cut for you.</p></div></div>
-      <div class="st"><span class="mono">Limited</span><div><strong>Too many requests</strong><p>Retrying is always your choice.</p></div></div>
-      <div class="st a"><span class="mono">Unverified</span><div><strong>Quote not found</strong><p>Kept apart from facts.</p></div></div>
-      <div class="st"><span class="mono">Demo</span><div><strong>Live AI isn't connected</strong><p>Said plainly, never faked.</p></div></div>
-    </div>
+  <div class="feat rv">
+    <div class="txt"><span class="mono">Traceable facts</span><h3>Every requirement shows its source.</h3><p>Open any finding to see the brief's exact words, then jump to them in the original. Designers check the AI instead of trusting it.</p>
+      <ul><li>Quotes matched word-for-word</li><li>Unfound quotes flagged as unverified</li></ul></div>
+    <div class="pad"><div class="card"><img src="case-study/stated.webp" alt="Stated requirements with an expanded source quote" loading="lazy"></div></div>
   </div>
-</div>
 
-<section class="w">
-  <div class="sec-head"><span class="mono g">05 / Flow</span><h2>Four steps.</h2></div>
-  <div class="flow rv">
-    <div><div class="n">1</div><h3>Paste</h3><p>Any brief or rough notes.</p></div>
-    <div><div class="n">2</div><h3>Decode</h3><p>Structured, quote-checked findings.</p></div>
-    <div><div class="n">3</div><h3>Review</h3><p>Answer, confirm, reject.</p></div>
-    <div><div class="n">4</div><h3>Export</h3><p>Copy or download the working brief.</p></div>
+  <div class="feat flip rv">
+    <div class="txt"><span class="mono">Ambiguity, named</span><h3>Vague words become specific questions.</h3><p>"Modern", "engaging" and "Friday" each get a reason they matter and one targeted question to resolve them.</p></div>
+    <div class="pad"><div class="card"><img src="case-study/unclear.webp" alt="Unclear points: modern, engaging, improve, Friday" loading="lazy"></div></div>
+  </div>
+
+  <div class="feat rv">
+    <div class="txt"><span class="mono">Designer in control</span><h3>Assumptions are confirmed, never slipped in.</h3><p>Plausible readings stay out of the working brief until the designer confirms, rejects or edits them.</p>
+      <ul><li>Confirm, reject or edit</li><li>Every choice can be undone</li></ul></div>
+    <div class="pad"><div class="card"><img src="case-study/assumptions.webp" alt="Assumptions to verify, one confirmed and one unconfirmed" loading="lazy"></div></div>
+  </div>
+
+  <div class="duo rv">
+    <div><div class="pad"><div class="card"><img src="case-study/questions.webp" alt="A prioritised list of questions with answer fields" loading="lazy"></div></div><p class="cap"><strong>One ranked question list.</strong> Marked "before designing" or "later", with space to log answers.</p></div>
+    <div><div class="pad"><div class="card"><img src="case-study/working-brief.webp" alt="The editable working brief with copy and download" loading="lazy"></div></div><p class="cap"><strong>A working brief to take away.</strong> Answers and confirmations become an editable brief to copy or download.</p></div>
   </div>
 </section>
 
 <section class="w">
-  <div class="sec-head"><span class="mono g">06 / Learnings</span><h2>What it<br>taught me.</h2></div>
+  <div class="head"><span class="mono">04 — Responsive</span><h2>Works where<br>briefs arrive.</h2></div>
+  <div class="phones rv">
+    <div class="phone"><img src="case-study/mobile-brief.webp" alt="Mobile: entering a checkout brief" loading="lazy"></div>
+    <div class="phone"><img src="case-study/mobile-analysis.webp" alt="Mobile: brief at a glance and stated requirements" loading="lazy"></div>
+    <div class="phone"><img src="case-study/mobile-questions.webp" alt="Mobile: questions to ask" loading="lazy"></div>
+  </div>
+  <p class="cap">Brief and Analysis become tabs on small screens, so a brief from Slack can be decoded on a phone.</p>
+</section>
+
+<section class="w">
+  <div class="head"><span class="mono">05 — Designing for AI</span><div><h2>Accuracy over<br>fluency.</h2><p class="sub">For this task, a confident mistake is worse than no answer. Trust was designed in, not added on.</p></div></div>
+  <div class="pr rv">
+    <div><div class="i">“”</div><h4>Quote checking</h4><p>Claims without a matching quote are shown apart from facts.</p></div>
+    <div><div class="i">∅</div><h4>Nothing invented</h4><p>No made-up audiences, metrics or dates. Empty beats padded.</p></div>
+    <div><div class="i">{ }</div><h4>Brief as data</h4><p>Instructions hidden in a pasted brief are ignored.</p></div>
+    <div><div class="i">◐</div><h4>Private by default</h4><p>No database or tracking. Work clears on reload.</p></div>
+  </div>
+</section>
+
+<section class="w">
+  <div class="head"><span class="mono">06 — Learnings</span><h2>What it<br>taught me.</h2></div>
   <div class="learn rv">
     <div><h3>Design for uncertainty</h3><p>What an AI doesn't know matters as much as what it says.</p></div>
     <div><h3>Trust is traceability</h3><p>A source quote did more than any claim of accuracy.</p></div>
-    <div><h3>States are the product</h3><p>Waiting, failing and refusing need as much design as the result.</p></div>
+    <div><h3>States are the product</h3><p>Loading, limits and refusals need as much design as results.</p></div>
   </div>
+  <div class="end rv">
+    <div><h2>Decode a brief<br>yourself.</h2><p>Paste any brief, or try one of three examples.</p></div>
+    <a href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Open Brief Decoder ↗</a>
+  </div>
+  <footer><span>Brief Decoder — 2026</span><a href="#">Back to top ↑</a></footer>
 </section>
 
-<div class="end w">
-  <span class="mono g">Try it yourself</span>
-  <a class="big" href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Open the<br>live tool <span class="acc">↗</span></a>
-  <footer><span class="mono g">Brief Decoder — 2026</span><a class="mono g" href="#">Back to top ↑</a></footer>
-</div>
-
 <script>
-  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.1});
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.08});
   document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+  const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('s',scrollY>10),{passive:true});
 </script>
 </body>
 </html>
