@@ -67,7 +67,7 @@
   .notes span.c{background:var(--caution);color:#6a4a0c}
 
   .six{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
-  .six div{background:var(--surface);border-radius:16px;padding:24px 20px 26px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
+  .six>div{background:var(--surface);border-radius:16px;padding:24px 20px 26px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
   .six b{font:700 40px/1 var(--sans);letter-spacing:-.04em;color:var(--accent)}
   .six h4{font:600 18px/1.25 var(--sans);letter-spacing:-.01em}
   .six p{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.45}
@@ -91,7 +91,7 @@
   .phone:nth-child(2){transform:translateY(-32px)}
 
   .pr{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .pr div{background:var(--surface);border-radius:16px;padding:28px}
+  .pr>div{background:var(--surface);border-radius:16px;padding:28px}
   .pr .i{width:44px;height:44px;border-radius:12px;background:var(--tint);color:var(--accent);display:grid;place-items:center;font:600 15px var(--mono);white-space:nowrap;margin-bottom:40px}
   .pr h4{font:600 19px/1.25 var(--sans);letter-spacing:-.02em;margin-bottom:8px}
   .pr p{font-size:15px;color:var(--muted)}
@@ -130,7 +130,58 @@
     .feat{gap:var(--s4);margin-bottom:var(--s6)}
     .hero{padding-top:var(--s6)}
   }
-  @media (max-width:560px){.btns{flex-direction:column;align-items:stretch}.pr,.six{grid-template-columns:1fr}.six div{min-height:0;gap:20px}}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    .w{padding:0 18px}
+    nav .w{height:60px}
+    .hero{padding:var(--s5) 0 var(--s5)}
+    .hero h1{font-size:clamp(44px,13vw,60px)}
+    .hero .lead{font-size:17px;margin-top:var(--s2)}
+    .btns{margin-top:var(--s4);flex-direction:column;align-items:stretch;gap:10px}
+    .btn{text-align:center;padding:15px 20px}
+    .stage{padding:20px 10px 0;border-radius:16px}
+    .bar{padding:8px 10px}.bar i{width:8px;height:8px}.bar span{font-size:10px}
+    .meta{grid-template-columns:1fr 1fr;margin-top:var(--s4)}
+    .meta div,.meta div+div{padding:var(--s2) var(--s2) var(--s2) 0;border-left:0}
+    .meta div:nth-child(even){padding-left:var(--s2);border-left:1px solid var(--line)}
+    .meta dd{font-size:15px;margin-top:6px}
+    section.w{padding-top:var(--s7)}
+    .head{margin-bottom:var(--s4)}
+    .head .mono{margin-bottom:var(--s2)}
+    h2{font-size:clamp(32px,9vw,40px)}
+    h3{font-size:23px;margin:10px 0 10px}
+    .sub{font-size:17px;margin-top:var(--s2)}
+    .brief{padding:var(--s4) 20px;border-radius:18px}
+    .brief blockquote{font-size:27px}
+    .notes{margin-top:var(--s3);gap:8px}.notes span{font-size:13.5px;padding:7px 12px}
+    .six{grid-template-columns:1fr 1fr;gap:10px}
+    .six>div{min-height:0;padding:18px 16px;gap:18px;border-radius:14px}
+    .six b{font-size:28px}.six h4{font-size:16px}.six p{font-size:13px}
+    .feat,.feat.flip{gap:var(--s3);margin-bottom:var(--s6)}
+    .feat .txt p{font-size:16px}
+    .feat .txt ul{margin-top:var(--s2)}.feat .txt li{font-size:15px;padding:10px 0}
+    .pad,.duo .pad{padding:12px;border-radius:18px;height:auto}
+    .duo .pad{max-height:560px}
+    .card{border-radius:12px}
+    .duo{gap:var(--s5)}
+    .phones{justify-content:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;padding:var(--s4) 24px;gap:16px;border-radius:18px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .phones::-webkit-scrollbar{display:none}
+    .phone,.phone:nth-child(2){flex:0 0 68%;width:auto;transform:none;scroll-snap-align:center;border-radius:30px;padding:6px}
+    .phone img{border-radius:25px}
+    .swipe{display:block}
+    .pr{grid-template-columns:1fr 1fr;gap:10px}
+    .pr>div{padding:18px 16px;border-radius:14px}
+    .pr .i{width:36px;height:36px;margin-bottom:var(--s3);font-size:13px}
+    .pr h4{font-size:16px}.pr p{font-size:13.5px}
+    .learn{gap:var(--s4)}
+    .learn h3{font-size:21px}
+    .end{margin-top:var(--s7);padding:var(--s5) 22px;border-radius:18px;gap:var(--s3)}
+    .end a{justify-self:stretch;text-align:center}
+    footer{padding:var(--s5) 0 var(--s4);font-size:13px}
+  }
+  .swipe{display:none;font-size:13px;color:var(--muted);margin-top:10px}
+  
   @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
@@ -192,23 +243,23 @@
   <div class="feat rv">
     <div class="txt"><span class="mono">Traceable facts</span><h3>Every requirement shows its source.</h3><p>Open any finding to see the brief's exact words, then jump to them in the original. Designers check the AI instead of trusting it.</p>
       <ul><li>Quotes matched word-for-word</li><li>Unfound quotes flagged as unverified</li></ul></div>
-    <div class="pad"><div class="card"><img src="case-study/stated.webp" alt="Stated requirements with an expanded source quote" loading="lazy"></div></div>
+    <div class="pad"><div class="card"><picture><source media="(max-width:640px)" srcset="case-study/m-stated.webp"><img src="case-study/stated.webp" alt="Stated requirements with an expanded source quote" loading="lazy"></picture></div></div>
   </div>
 
   <div class="feat flip rv">
     <div class="txt"><span class="mono">Ambiguity, named</span><h3>Vague words become specific questions.</h3><p>"Modern", "engaging" and "Friday" each get a reason they matter and one targeted question to resolve them.</p></div>
-    <div class="pad"><div class="card"><img src="case-study/unclear.webp" alt="Unclear points: modern, engaging, improve, Friday" loading="lazy"></div></div>
+    <div class="pad"><div class="card"><picture><source media="(max-width:640px)" srcset="case-study/m-unclear.webp"><img src="case-study/unclear.webp" alt="Unclear points: modern, engaging, improve, Friday" loading="lazy"></picture></div></div>
   </div>
 
   <div class="feat rv">
     <div class="txt"><span class="mono">Designer in control</span><h3>Assumptions are confirmed, never slipped in.</h3><p>Plausible readings stay out of the working brief until the designer confirms, rejects or edits them.</p>
       <ul><li>Confirm, reject or edit</li><li>Every choice can be undone</li></ul></div>
-    <div class="pad"><div class="card"><img src="case-study/assumptions.webp" alt="Assumptions to verify, one confirmed and one unconfirmed" loading="lazy"></div></div>
+    <div class="pad"><div class="card"><picture><source media="(max-width:640px)" srcset="case-study/m-assumptions.webp"><img src="case-study/assumptions.webp" alt="Assumptions to verify, one confirmed and one unconfirmed" loading="lazy"></picture></div></div>
   </div>
 
   <div class="duo rv">
-    <div><div class="pad"><div class="card"><img src="case-study/questions.webp" alt="A prioritised list of questions with answer fields" loading="lazy"></div></div><p class="cap"><strong>One ranked question list.</strong> Marked "before designing" or "later", with space to log answers.</p></div>
-    <div><div class="pad"><div class="card"><img src="case-study/working-brief.webp" alt="The editable working brief with copy and download" loading="lazy"></div></div><p class="cap"><strong>A working brief to take away.</strong> Answers and confirmations become an editable brief to copy or download.</p></div>
+    <div><div class="pad"><div class="card"><picture><source media="(max-width:640px)" srcset="case-study/m-questions.webp"><img src="case-study/questions.webp" alt="A prioritised list of questions with answer fields" loading="lazy"></picture></div></div><p class="cap"><strong>One ranked question list.</strong> Marked "before designing" or "later", with space to log answers.</p></div>
+    <div><div class="pad"><div class="card"><picture><source media="(max-width:640px)" srcset="case-study/m-working-brief.webp"><img src="case-study/working-brief.webp" alt="The editable working brief with copy and download" loading="lazy"></picture></div></div><p class="cap"><strong>A working brief to take away.</strong> Answers and confirmations become an editable brief to copy or download.</p></div>
   </div>
 </section>
 
@@ -219,6 +270,7 @@
     <div class="phone"><img src="case-study/mobile-analysis.webp" alt="Mobile: brief at a glance and stated requirements" loading="lazy"></div>
     <div class="phone"><img src="case-study/mobile-questions.webp" alt="Mobile: questions to ask" loading="lazy"></div>
   </div>
+  <p class="swipe">Swipe to see more →</p>
   <p class="cap">Brief and Analysis become tabs on small screens, so a brief from Slack can be decoded on a phone.</p>
 </section>
 
