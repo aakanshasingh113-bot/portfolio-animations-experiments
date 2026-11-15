@@ -53,3 +53,96 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ───────────── Ledgerly prototype (scoped to .ledgerly) ───────────── */
+@theme inline {
+  --color-l-bg: var(--l-bg);
+  --color-l-card: var(--l-card);
+  --color-l-sunk: var(--l-sunk);
+  --color-l-ink: var(--l-ink);
+  --color-l-mute: var(--l-mute);
+  --color-l-rule: var(--l-rule);
+  --color-l-ctrl: var(--l-ctrl);
+  --color-l-pri: var(--l-pri);
+  --color-l-pri2: var(--l-pri2);
+  --color-l-tint: var(--l-tint);
+  --color-l-onpri: var(--l-onpri);
+  --color-l-pos: var(--l-pos);
+  --color-l-postint: var(--l-postint);
+  --color-l-amb: var(--l-amb);
+  --color-l-ambtint: var(--l-ambtint);
+  --color-l-ambmark: var(--l-ambmark);
+  --color-l-crit: var(--l-crit);
+  --color-l-crittint: var(--l-crittint);
+}
+
+.ledgerly {
+  color-scheme: light;
+  --l-bg: #f7f5f0;
+  --l-card: #ffffff;
+  --l-sunk: #efece4;
+  --l-ink: #1b2422;
+  --l-mute: #56605d;
+  --l-rule: #e2ded4;
+  --l-ctrl: #7d8884;
+  --l-pri: #0f5c56;
+  --l-pri2: #0a4742;
+  --l-tint: #e0eeeb;
+  --l-onpri: #ffffff;
+  --l-pos: #1c6e37;
+  --l-postint: #e4f1e7;
+  --l-amb: #7a4f00;
+  --l-ambtint: #fbefd2;
+  --l-ambmark: #b87a00;
+  --l-crit: #a8261e;
+  --l-crittint: #fbe9e7;
+  --c1: #2a78d6; --c2: #d95926; --c3: #199e70; --c4: #b87a00; --c5: #d55181;
+  --c6: #008300; --c7: #6250d6; --c8: #e34948; --c9: #0f8ea3; --c10: #a8601c;
+  --c-other: #8a918e;
+  background: var(--l-bg);
+  color: var(--l-ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+.ledgerly[data-theme="dark"] {
+  color-scheme: dark;
+  --l-bg: #0e1615;
+  --l-card: #172120;
+  --l-sunk: #1f2b2a;
+  --l-ink: #ecefec;
+  --l-mute: #a6b1ae;
+  --l-rule: #2b3938;
+  --l-ctrl: #74827f;
+  --l-pri: #55c4b6;
+  --l-pri2: #7dd6ca;
+  --l-tint: #14332f;
+  --l-onpri: #062422;
+  --l-pos: #62cf88;
+  --l-postint: #14301f;
+  --l-amb: #f0bb50;
+  --l-ambtint: #3a2c0c;
+  --l-ambmark: #c98500;
+  --l-crit: #ff8f85;
+  --l-crittint: #3d1a17;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181;
+  --c6: #0ca30c; --c7: #9085e9; --c8: #e66767; --c9: #16a3bb; --c10: #b8743a;
+  --c-other: #7c8683;
+}
+.ledgerly :focus-visible { outline: 2px solid var(--l-pri); outline-offset: 2px; }
+.ledgerly ::selection { background: var(--l-tint); }
+.ledgerly .l-blur { filter: blur(7px); user-select: none; }
+.ledgerly .l-hatch {
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--l-card) 55%, transparent) 4px 7px);
+}
+@keyframes l-sheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes l-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes l-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.ledgerly .l-sheet { animation: l-sheet 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+.ledgerly .l-fade { animation: l-fade 0.2s ease-out; }
+.ledgerly .l-skel { background: var(--l-sunk); border-radius: 8px; animation: l-pulse 1.4s ease-in-out infinite; }
+.ledgerly .l-scroll { scrollbar-width: thin; scrollbar-color: var(--l-rule) transparent; }
+/* Grid children may shrink below their content, so scrolling strips never widen a column. */
+.ledgerly :where(.grid) > * {
+  min-width: 0;
+}

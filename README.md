@@ -131,3 +131,11 @@ This runs type checking, linting, the tests (`tests/`) and a production build. R
 - The working brief is updated by fixed rules, not rewritten by AI, so answers are added as "question — answer" lines for you to tidy.
 - No accounts, file uploads, sharing or integrations.
 - Accessibility was checked by keyboard and automated browser runs, not with a screen reader or a formal WCAG audit.
+
+## Ledgerly prototype (`/ledgerly`)
+
+A separate, self-contained experiment: an interactive prototype of a personal finance tracker. It shares nothing with Brief Decoder except the build.
+
+- `/ledgerly` — the prototype. The top bar switches user (Aanya ₹ / Jordan $), device frame, light/dark, and screen state (default, empty, loading, sync failed, offline), and shows research notes per screen.
+- `/ledgerly/design-system` — colours, type, components and tokens in light and dark.
+- Code lives in `src/ledgerly/`. Sample data is generated in `data.ts` for 1 Nov 2025 – 15 Nov 2026, with "today" fixed at 15 Nov 2026. Nothing is saved or sent anywhere; sync, SMS parsing and AI answers are simulated.
