@@ -210,17 +210,61 @@
   .swipe{display:none;font-size:13px;color:var(--muted);margin-top:10px}
   
   @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+
+  /* ---- interactions ---- */
+  .progress{position:fixed;top:0;left:0;height:3px;width:100%;background:var(--accent);transform-origin:0 50%;transform:scaleX(0);z-index:30}
+  .btn,.try,.end a{position:relative;display:inline-flex;align-items:center;gap:8px}
+  .btn .ar,.try .ar,.end a .ar{display:inline-block;transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+  .btn:hover .ar,.try:hover .ar,.end a:hover .ar{transform:translate(3px,-3px)}
+  .btn.s:hover .ar{transform:translateY(3px)}
+  .btn:active,.try:active,.end a:active{transform:scale(.97)}
+  nav a.back{position:relative}
+  nav a.back::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:1.5px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .3s}
+  nav a.back:hover::after{transform:scaleX(1);transform-origin:left}
+  .browser{transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+  .stage:hover .browser{transform:translateY(-8px)}
+  .card{transition:transform .5s cubic-bezier(.2,.7,.2,1),box-shadow .5s}
+  .pad:hover .card{transform:translateY(-6px) scale(1.01);box-shadow:0 0 0 1px var(--line),0 36px 70px -24px rgba(10,30,20,.35)}
+  .feat .txt li{transition:padding .25s,color .25s}
+  .feat .txt li:hover{padding-left:8px;color:var(--accent-strong)}
+  .notes span{transition:transform .2s,background .2s;cursor:default}
+  .notes span:hover{transform:translateY(-2px) rotate(-1.5deg)}
+  .brief mark{transition:background-size .4s;background-size:100% 100%}
+  .lens-list li{transition:background .25s,padding .25s;border-radius:12px;cursor:default}
+  .lens-list li:hover{background:var(--bg);padding-left:10px;padding-right:10px}
+  .lens-list li:hover b{color:var(--accent-strong)}
+  .chips i{transition:transform .2s}
+  .lens-list li:hover .chips i{transform:translateY(-2px)}
+  .lens-brief u{transition:box-shadow .25s,transform .25s;display:inline}
+  .lens-brief u.on{box-shadow:0 0 0 3px #fff;border-radius:4px}
+  .lens-brief.dim u:not(.on){opacity:.45}
+  .lens-brief u{transition:opacity .25s,box-shadow .25s}
+  .phone{transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  .phones .phone:hover{transform:translateY(-12px) rotate(-1deg)}
+  .phones .phone:nth-child(2):hover{transform:translateY(-44px)}
+  .pr>div{transition:transform .3s,box-shadow .3s}
+  .pr>div:hover{transform:translateY(-4px);box-shadow:0 20px 40px -24px rgba(10,30,20,.3)}
+  .pr .i{transition:transform .4s cubic-bezier(.3,1.6,.5,1),background .3s,color .3s}
+  .pr>div:hover .i{transform:rotate(-8deg) scale(1.1);background:var(--accent);color:#fff}
+  .learn div{transition:border-color .3s}
+  .learn div:hover{border-color:var(--accent)}
+  .learn div:hover h3{color:var(--accent)}
+  .learn h3{transition:color .3s}
+  footer a:hover{color:var(--ink)}
+  @media (hover:none){.stage:hover .browser,.pad:hover .card,.phones .phone:hover,.pr>div:hover{transform:none}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.progress{display:none}}
 </style>
 </head>
 <body>
 
-<nav id="nav"><div class="w"><a href="#">← Work</a><a class="try" href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Try it live ↗</a></div></nav>
+<div class="progress" id="progress"></div>
+<nav id="nav"><div class="w"><a class="back" href="#">← Work</a><a class="try" href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Try it live <span class="ar">↗</span></a></div></nav>
 
 <header class="hero w">
   <span class="pill">AI experiment · Case study</span>
   <h1>Brief <em>Decoder</em></h1>
   <p class="lead">An AI tool that separates what a design brief actually says from what still needs a conversation.</p>
-  <div class="btns"><a class="btn p" href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Try it live ↗</a><a class="btn s" href="#problem">Read the case study ↓</a></div>
+  <div class="btns"><a class="btn p" href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Try it live <span class="ar">↗</span></a><a class="btn s" href="#problem">Read the case study <span class="ar">↓</span></a></div>
 </header>
 
 <div class="w rv">
@@ -261,12 +305,12 @@
       <div class="arrow">↓ decoded into six lenses</div>
     </div>
     <ol class="lens-list">
-      <li><b>01</b><div><h4>Stated</h4><p>What it says, in its exact words</p></div><span class="chips"><i class="c1">Improve the dashboard</i><i class="c1">Add personalisation</i></span></li>
-      <li><b>02</b><div><h4>Unclear</h4><p>Wording with more than one reading</p></div><span class="chips"><i class="c2">“modern”</i><i class="c2">“engaging”</i></span></li>
+      <li data-t="t1"><b>01</b><div><h4>Stated</h4><p>What it says, in its exact words</p></div><span class="chips"><i class="c1">Improve the dashboard</i><i class="c1">Add personalisation</i></span></li>
+      <li data-t="t2"><b>02</b><div><h4>Unclear</h4><p>Wording with more than one reading</p></div><span class="chips"><i class="c2">“modern”</i><i class="c2">“engaging”</i></span></li>
       <li><b>03</b><div><h4>Missing</h4><p>Absent details that change the work</p></div><span class="chips"><i class="c3">Who are the users?</i><i class="c3">Success measure</i></span></li>
       <li><b>04</b><div><h4>Assumptions</h4><p>Readings to confirm, not act on</p></div><span class="chips"><i class="c4">It's a redesign</i></span></li>
-      <li><b>05</b><div><h4>Conflicts</h4><p>Requests that pull against each other</p></div><span class="chips"><i class="c5">Full scope vs “Friday”</i></span></li>
-      <li><b>06</b><div><h4>Questions</h4><p>One ranked list for the stakeholder</p></div><span class="chips"><i class="c6">Which Friday, for what?</i></span></li>
+      <li data-t="t5"><b>05</b><div><h4>Conflicts</h4><p>Requests that pull against each other</p></div><span class="chips"><i class="c5">Full scope vs “Friday”</i></span></li>
+      <li data-t="t5"><b>06</b><div><h4>Questions</h4><p>One ranked list for the stakeholder</p></div><span class="chips"><i class="c6">Which Friday, for what?</i></span></li>
     </ol>
   </div>
 </section>
@@ -327,7 +371,7 @@
   </div>
   <div class="end rv">
     <div><h2>Decode a brief<br>yourself.</h2><p>Paste any brief, or try one of three examples.</p></div>
-    <a href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Open Brief Decoder ↗</a>
+    <a href="https://portfolio-animations-experiments.vercel.app/" target="_blank" rel="noopener">Open Brief Decoder <span class="ar">↗</span></a>
   </div>
   <footer><span>Brief Decoder — 2026</span><a href="#">Back to top ↑</a></footer>
 </section>
@@ -336,6 +380,14 @@
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.08});
   document.querySelectorAll('.rv').forEach(el=>io.observe(el));
   const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('s',scrollY>10),{passive:true});
+
+  const bar=document.getElementById('progress');
+  addEventListener('scroll',()=>{const h=document.documentElement;bar.style.transform='scaleX('+(h.scrollTop/(h.scrollHeight-h.clientHeight))+')'},{passive:true});
+  const lb=document.querySelector('.lens-brief');
+  document.querySelectorAll('.lens-list li[data-t]').forEach(li=>{
+    li.addEventListener('mouseenter',()=>{lb.classList.add('dim');lb.querySelectorAll('u.'+li.dataset.t).forEach(u=>u.classList.add('on'))});
+    li.addEventListener('mouseleave',()=>{lb.classList.remove('dim');lb.querySelectorAll('u.on').forEach(u=>u.classList.remove('on'))});
+  });
 </script>
 </body>
 </html>
