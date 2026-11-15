@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { analyseBrief } from "@/lib/analyse";
+import { analyseBriefGemini } from "@/lib/analyse-gemini";
 import { handleAnalyse } from "@/lib/analyse-handler";
 import { getServerConfig } from "@/lib/config";
 import {
@@ -42,7 +43,11 @@ export async function POST(request: Request): Promise<Response> {
     limiter: live && config.limiter !== "none" ? getLimiter(config.limiter) : null,
     clientId: clientId(request),
     analyse: (brief, signal) =>
-      analyseBrief(brief, { apiKey: apiKey ?? "", model: config.model, signal }),
+      (config.provider === "gemini" ? analyseBriefGemini : analyseBrief)(brief, {
+        apiKey: apiKey ?? "",
+        model: config.model,
+        signal,
+      }),
     // Codes only. Request bodies and model output are never logged.
     log: (code) => console.error(`[analyse] ${code}`),
   });

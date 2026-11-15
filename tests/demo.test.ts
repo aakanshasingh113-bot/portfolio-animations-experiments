@@ -90,3 +90,18 @@ describe("server configuration", () => {
     expect(getServerConfig({ ANTHROPIC_MODEL: "some-model" }).model).toBe("some-model");
   });
 });
+
+describe("Gemini provider", () => {
+  it("uses Gemini when only GEMINI_API_KEY is set", () => {
+    const config = getServerConfig({ GEMINI_API_KEY: "g", NODE_ENV: "production", ALLOW_UNMETERED_LIVE: "true" });
+    expect(config.mode).toBe("live");
+    expect(config.provider).toBe("gemini");
+    expect(config.model).toBe("gemini-4-hydrogen");
+  });
+  it("stays in demo in production without limits or opt-in", () => {
+    expect(getServerConfig({ GEMINI_API_KEY: "g", NODE_ENV: "production" }).mode).toBe("demo");
+  });
+  it("prefers Claude when both keys are set", () => {
+    expect(getServerConfig({ GEMINI_API_KEY: "g", ANTHROPIC_API_KEY: "a" }).provider).toBe("anthropic");
+  });
+});
