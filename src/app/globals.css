@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-page: #f6f5f1;
+  --color-surface: #ffffff;
+  --color-ink: #202824;
+  --color-muted: #566058;
+  --color-line: #dce1da;
+  /* Control borders need 3:1 against the surface (WCAG 1.4.11). */
+  --color-control: #7f8a82;
+  --color-accent: #285747;
+  --color-accent-strong: #1d4336;
+  --color-accent-tint: #eaf1ec;
+  --color-caution: #6a4a0c;
+  --color-caution-tint: #f6ecd6;
+  --color-caution-line: #e3d2a8;
+  --color-danger: #8a2a21;
+  --color-danger-tint: #f9eeec;
+  --color-danger-line: #e6c4bf;
+}
+
+html {
+  background: var(--color-page);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #cfe0d5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
